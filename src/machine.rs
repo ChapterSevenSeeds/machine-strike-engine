@@ -1,7 +1,7 @@
 use crate::enums::{MachineSkill, MachineType};
 
-pub struct Machine<'a> {
-    pub name: &'a str,
+pub struct Machine {
+    pub name: &'static str,
     pub skill: MachineSkill,
     pub machine_type: MachineType,
     pub armored_sides: i32,

@@ -1,3 +1,6 @@
+use std::fmt;
+
+#[derive(Debug)]
 pub enum Terrain {
     Chasm = -2,
     Marsh = -1,
@@ -5,6 +8,12 @@ pub enum Terrain {
     Forest = 1,
     Hill = 2,
     Mountain = 3,
+}
+
+impl fmt::Display for Terrain {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 pub enum MachineSkill {
@@ -40,4 +49,24 @@ pub enum MachineSide {
     Left = 1 << 1,
     Right = 1 << 2,
     Rear = 1 << 3,
+}
+
+pub enum MachineDirection {
+    North,
+    East,
+    South,
+    West,
+}
+
+pub enum Turn {
+    Player,
+    Opponent,
+}
+
+pub enum MachineState {
+    Ready, // Can move and/or attack
+    Moved, // Has moved, can attack and rotate
+    Attacked, // Has attacked, can move and rotate
+    MovedAndAttacked, // Has moved and attacked, can rotate
+    Overcharged // Can't do anything
 }
