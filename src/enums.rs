@@ -1,6 +1,6 @@
 use std::fmt;
 
-#[derive(Debug)]
+#[derive(PartialEq, Debug)]
 pub enum Terrain {
     Chasm = -2,
     Marsh = -1,
@@ -35,13 +35,14 @@ pub enum MachineSkill {
     Blind,
 }
 
+#[derive(PartialEq)]
 pub enum MachineType {
     Gunner,
     Pull,
     Ram,
     Melee,
     Dash,
-    Swoop
+    Swoop,
 }
 
 pub enum MachineSide {
@@ -64,9 +65,9 @@ pub enum Turn {
 }
 
 pub enum MachineState {
-    Ready, // Can move and/or attack
-    Moved, // Has moved, can attack and rotate
-    Attacked, // Has attacked, can move and rotate
+    Ready,            // Can move and/or attack
+    Moved,            // Has moved, can attack and rotate
+    Attacked,         // Has attacked, can move and rotate
     MovedAndAttacked, // Has moved and attacked, can rotate
-    Overcharged // Can't do anything
+    Overcharged,      // Can't do anything
 }

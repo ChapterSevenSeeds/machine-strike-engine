@@ -13,3 +13,8 @@ pub struct Machine {
     pub points: i32,
 }
 
+impl Machine {
+    pub fn is_flying(&self) -> bool {
+        return self.machine_type == MachineType::Swoop;
+    }
+}
