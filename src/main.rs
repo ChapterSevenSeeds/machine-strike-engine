@@ -1,9 +1,9 @@
 use game_machine::GameMachine;
 use machine::Machine;
-use machines::STORMBIRD;
+use machines::{SPIKESNOUT, STALKER, STORMBIRD};
 use moves::{calculate_moves, Move};
 
-use crate::enums::{Terrain, MachineDirection, MachineState, Turn};
+use crate::enums::{Terrain, MachineDirection, MachineState, Player};
 
 pub mod machine;
 pub mod enums;
@@ -11,6 +11,7 @@ pub mod machines;
 pub mod game;
 pub mod moves;
 pub mod game_machine;
+pub mod attacks;
 
 
 fn main() {
@@ -25,10 +26,34 @@ fn main() {
         [Terrain::Grassland, Terrain::Grassland, Terrain::Grassland, Terrain::Grassland, Terrain::Grassland, Terrain::Grassland, Terrain::Grassland, Terrain::Grassland]
     ];
 
-    let mut machines: [[Option<Machine>; 8]; 8] = [
-        [Some(STORMBIRD), None, None, None, None, None, None, None],
+    let opponent_machine: GameMachine = GameMachine {
+        row: 2,
+        column: 0,
+        machine: STALKER,
+        attack_power: 0,
+        defense_power: 0,
+        direction: MachineDirection::East,
+        health: 0,
+        machine_state: MachineState::Ready,
+        side: Player::Opponent
+    };
+
+    let game_machine: GameMachine = GameMachine {
+        row: 0,
+        column: 0,
+        machine: STALKER,
+        attack_power: 0,
+        defense_power: 0,
+        direction: MachineDirection::East,
+        health: 0,
+        machine_state: MachineState::Ready,
+        side: Player::Player
+    };
+
+    let mut machines: [[Option<&GameMachine>; 8]; 8] = [
+        [Some(&game_machine), None, None, None, None, None, None, None],
         [None, None, None, None, None, None, None, None],
-        [None, None, None, None, None, None, None, None],
+        [Some(&opponent_machine), None, None, None, None, None, None, None],
         [None, None, None, None, None, None, None, None],
         [None, None, None, None, None, None, None, None],
         [None, None, None, None, None, None, None, None],
@@ -36,26 +61,15 @@ fn main() {
         [None, None, None, None, None, None, None, None]
     ];
 
-    let game_machine: GameMachine = GameMachine {
-        row: 0,
-        column: 0,
-        machine: STORMBIRD,
-        attack_power: 0,
-        defense_power: 0,
-        direction: MachineDirection::East,
-        health: 0,
-        machine_state: MachineState::Ready
-    };
-
     let game = game::Game {
         board: board,
         machines: machines,
         opponent_starting_pieces: Vec::new(),
         player_starting_pieces: Vec::new(),
-        turn: Turn::Opponent
+        turn: Player::Opponent
     };
 
-    let moves = calculate_moves(game, game_machine);
+    let moves = calculate_moves(&game, &game_machine);
     print_moves(moves);
 }
 
@@ -65,7 +79,7 @@ fn print_moves(moves: Vec<Move>) {
             let m = moves.iter().find(|m| m.row == row && m.column == col);
             match m {
                 Some(m) => {
-                    print!("|{:>1}", if !m.requires_overcharge { "X" } else { "O" });
+                    print!("|{:>1}", if !m.requires_sprint { "X" } else { "S" });
                 },
                 None => {
                     print!("|{:>1}", " ");

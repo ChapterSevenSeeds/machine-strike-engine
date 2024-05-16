@@ -59,7 +59,8 @@ pub enum MachineDirection {
     West,
 }
 
-pub enum Turn {
+#[derive(PartialEq)]
+pub enum Player {
     Player,
     Opponent,
 }
@@ -67,6 +68,7 @@ pub enum Turn {
 pub enum MachineState {
     Ready,            // Can move and/or attack
     Moved,            // Has moved, can attack and rotate
+    Sprinted,         // Has sprinted, can only overcharge
     Attacked,         // Has attacked, can move and rotate
     MovedAndAttacked, // Has moved and attacked, can rotate
     Overcharged,      // Can't do anything

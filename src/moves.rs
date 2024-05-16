@@ -1,5 +1,5 @@
 use crate::{
-    enums::{MachineType, Terrain},
+    enums::{MachineState, MachineType, Terrain},
     game::Game,
     game_machine::GameMachine,
 };
@@ -7,23 +7,32 @@ use crate::{
 pub struct Move {
     pub row: usize,
     pub column: usize,
-    pub requires_overcharge: bool,
+    pub requires_sprint: bool,
+    pub found_at_depth: i32
 }
 
-pub fn calculate_moves(game: Game, machine: GameMachine) -> Vec<Move> {
-    let mut flood_filled = [[false; 8]; 8];
+pub struct MoveWithDepth {
+    pub m: Move,
+    pub depth: i32,
+}
+
+pub fn calculate_moves(game: &Game, machine: &GameMachine) -> Vec<Move> {
+    let mut visited = [[false; 8]; 8];
 
     let mut all_moves: Vec<Move> = Vec::new();
 
-    let mut remaining_flood_depth = machine.machine.movement - 1;
     all_moves.append(&mut expand_moves(
-        remaining_flood_depth,
+        1,
         machine.row,
         machine.column,
         &machine,
         &game,
-        &mut flood_filled,
+        &mut visited,
     ));
+
+    if all_moves.is_empty() {
+        return all_moves;
+    }
 
     let mut expanded_index = 0;
 
@@ -33,15 +42,13 @@ pub fn calculate_moves(game: Game, machine: GameMachine) -> Vec<Move> {
         expanded_index += 1;
 
         all_moves.append(&mut expand_moves(
-            remaining_flood_depth,
+            current_move.found_at_depth + 1,
             current_move.row,
             current_move.column,
             &machine,
             &game,
-            &mut flood_filled,
+            &mut visited,
         ));
-
-        remaining_flood_depth -= 1;
 
         if expanded_index >= all_moves.len() {
             break;
@@ -52,77 +59,81 @@ pub fn calculate_moves(game: Game, machine: GameMachine) -> Vec<Move> {
 }
 
 fn expand_moves(
-    remaining_movements: i32,
+    distance_travelled: i32,
     row: usize,
     column: usize,
     machine: &GameMachine,
     game: &Game,
-    flood_filled: &mut [[bool; 8]; 8],
+    visited: &mut [[bool; 8]; 8],
 ) -> Vec<Move> {
-    // If the machine is not a flying machine and we are currently in a marsh, we can't move
-    if !machine.machine.is_flying() && game.board[row][column] == Terrain::Marsh {
+    // If we have already sprinted, we can't move
+    if distance_travelled > machine.machine.movement + 1 {
         return Vec::new();
     }
 
-    // If we have already overcharged, we can't move
-    if remaining_movements < 0 {
+    // If this isn't our first move and if the machine is not a flying machine and we are currently in a marsh, we can't move
+    if distance_travelled > 1 && !machine.machine.is_flying() && game.board[row][column] == Terrain::Marsh {
         return Vec::new();
     }
 
     let mut moves: Vec<Move> = Vec::new();
-    let requires_overcharge = remaining_movements == 0;
+    let requires_sprint = distance_travelled > machine.machine.movement;
     let mut new_row: usize;
     let mut new_column: usize;
 
     // Go up
     if row > 0 {
         new_row = row - 1;
-        if !is_spot_blocked_or_redundant(new_row, column, &game, &machine, flood_filled) {
+        if !is_spot_blocked_or_redundant(new_row, column, &game, &machine, visited) {
             moves.push(Move {
                 row: new_row,
                 column,
-                requires_overcharge,
+                requires_sprint,
+                found_at_depth: distance_travelled
             });
-            flood_filled[new_row][column] = true;
+            visited[new_row][column] = true;
         }
     }
 
     // Go down
     if row < 7 {
         new_row = row + 1;
-        if !is_spot_blocked_or_redundant(new_row, column, &game, &machine, flood_filled) {
+        if !is_spot_blocked_or_redundant(new_row, column, &game, &machine, visited) {
             moves.push(Move {
                 row: new_row,
                 column,
-                requires_overcharge,
+                requires_sprint,
+                found_at_depth: distance_travelled
             });
-            flood_filled[new_row][column] = true;
+            visited[new_row][column] = true;
         }
     }
 
     // Go left
     if column > 0 {
         new_column = column - 1;
-        if !is_spot_blocked_or_redundant(row, new_column, &game, &machine, flood_filled) {
+        if !is_spot_blocked_or_redundant(row, new_column, &game, &machine, visited) {
             moves.push(Move {
                 row,
                 column: new_column,
-                requires_overcharge,
+                requires_sprint,
+                found_at_depth: distance_travelled
             });
-            flood_filled[row][new_column] = true;
+            visited[row][new_column] = true;
         }
     }
 
     // Go right
     if column < 7 {
         new_column = column + 1;
-        if !is_spot_blocked_or_redundant(row, new_column, &game, &machine, flood_filled) {
+        if !is_spot_blocked_or_redundant(row, new_column, &game, &machine, visited) {
             moves.push(Move {
                 row,
                 column: new_column,
-                requires_overcharge,
+                requires_sprint,
+                found_at_depth: distance_travelled
             });
-            flood_filled[row][new_column] = true;
+            visited[row][new_column] = true;
         }
     }
 
@@ -130,29 +141,29 @@ fn expand_moves(
 }
 
 fn is_spot_blocked_or_redundant(
-    x: usize,
-    y: usize,
+    row: usize,
+    column: usize,
     game: &Game,
     machine: &GameMachine,
-    flood_filled: &[[bool; 8]; 8],
+    visited: &[[bool; 8]; 8],
 ) -> bool {
     // Are we out of bounds?
-    if x > 7 || y > 7 {
+    if row > 7 || column > 7 {
         return true;
     }
 
     // Have we already been here?
-    if flood_filled[x][y] {
+    if visited[row][column] {
         return true;
     }
 
     // Is a machine already there?
-    if game.machines[x][y].is_some() {
+    if game.machines[row][column].is_some() {
         return true;
     }
 
     // Is the machine not a flying machine and is the terrain a chasm?
-    if !machine.machine.is_flying() && game.board[x][y] == Terrain::Chasm {
+    if !machine.machine.is_flying() && game.board[row][column] == Terrain::Chasm {
         return true;
     }
 

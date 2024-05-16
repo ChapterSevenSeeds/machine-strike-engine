@@ -1,5 +1,5 @@
 use crate::{
-    enums::{MachineDirection, MachineState},
+    enums::{MachineDirection, MachineState, Player},
     machine::Machine,
 };
 
@@ -12,4 +12,5 @@ pub struct GameMachine {
     pub machine_state: MachineState,
     pub attack_power: i32,
     pub defense_power: i32,
+    pub side: Player
 }
