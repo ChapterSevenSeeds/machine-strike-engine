@@ -6,6 +6,8 @@ use crate::{
 
 pub struct Attack {
     pub direction: MachineDirection,
+    pub machine_row: usize,
+    pub machine_column: usize,
 }
 
 pub fn calculate_attacks(game: &Game, machine: &GameMachine) -> Vec<Attack> {
@@ -18,39 +20,12 @@ pub fn calculate_attacks(game: &Game, machine: &GameMachine) -> Vec<Attack> {
         MachineDirection::West,
     ] {
         match machine.machine.machine_type {
-            MachineType::Melee => {
-                let mut row = machine.row;
-                let mut column = machine.column;
-                for i in 1..machine.machine.range {
-                    match direction {
-                        MachineDirection::North => {
-                            row -= 1;
-                        }
-                        MachineDirection::East => {
-                            column += 1;
-                        }
-                        MachineDirection::South => {
-                            row += 1;
-                        }
-                        MachineDirection::West => {
-                            column -= 1;
-                        }
+            MachineType::Melee | MachineType::Ram | MachineType::Swoop | MachineType::Pull => {
+                match first_machine_in_attack_range(direction, game, machine) {
+                    Some(attack) => {
+                        attacks.push(attack);
                     }
-
-                    if row >= 8 || column >= 8 {
-                        break;
-                    }
-
-                    if row < 0 || column < 0 {
-                        break;
-                    }
-
-                    if game.machines[row][column].is_some()
-                        && game.machines[row][column].unwrap().side != machine.side
-                    {
-                        attacks.push(Attack { direction });
-                        break;
-                    }
+                    None => {}
                 }
             }
             MachineType::Gunner => {
@@ -87,11 +62,63 @@ pub fn calculate_attacks(game: &Game, machine: &GameMachine) -> Vec<Attack> {
                 if game.machines[row as usize][column as usize].is_some()
                     && game.machines[row as usize][column as usize].unwrap().side != machine.side
                 {
-                    attacks.push(Attack { direction });
+                    attacks.push(Attack {
+                        direction,
+                        machine_row: row as usize,
+                        machine_column: column as usize,
+                    });
                 }
+            },
+            MachineType::Dash => {
+                todo!()
             }
         }
     }
 
     return attacks;
+}
+
+fn first_machine_in_attack_range(
+    direction: MachineDirection,
+    game: &Game,
+    machine: &GameMachine,
+) -> Option<Attack> {
+    let mut row = machine.row as i32;
+    let mut column = machine.column as i32;
+    for _i in 1..machine.machine.range {
+        match direction {
+            MachineDirection::North => {
+                row -= 1;
+            }
+            MachineDirection::East => {
+                column += 1;
+            }
+            MachineDirection::South => {
+                row += 1;
+            }
+            MachineDirection::West => {
+                column -= 1;
+            }
+        }
+
+        if row >= 8 || column >= 8 {
+            break;
+        }
+
+        if row < 0 || column < 0 {
+            break;
+        }
+
+        if game.machines[row as usize][column as usize].is_some()
+            && game.machines[row as usize][column as usize].unwrap().side != machine.side
+        {
+            return Some(Attack {
+                direction,
+                machine_row: row as usize,
+                machine_column: column as usize,
+            });
+        }
+    }
+
+    return None;
 }
