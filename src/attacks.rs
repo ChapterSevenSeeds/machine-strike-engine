@@ -1,5 +1,5 @@
 use crate::{
-    enums::{MachineDirection, MachineType},
+    enums::{MachineDirection, MachineSkill, MachineType},
     game::Game,
     game_machine::GameMachine,
 };
@@ -70,7 +70,52 @@ pub fn calculate_attacks(game: &Game, machine: &GameMachine) -> Vec<Attack> {
                 }
             },
             MachineType::Dash => {
-                todo!()
+                let mut row = machine.row as i32;
+                let mut column = machine.column as i32;
+                match direction {
+                    MachineDirection::North => {
+                        if row - machine.machine.range < 0 {
+                            continue;
+                        }
+
+                        row -= machine.machine.range;
+                    }
+                    MachineDirection::East => {
+                        if column + machine.machine.range > 7 {
+                            continue;
+                        }
+                        column += machine.machine.range;
+                    }
+                    MachineDirection::South => {
+                        if row - machine.machine.range > 7 {
+                            continue;
+                        }
+                        row += machine.machine.range;
+                    }
+                    MachineDirection::West => {
+                        if column - machine.machine.range < 0 {
+                            continue;
+                        }
+                        column -= machine.machine.range;
+                    }
+                }
+
+                // Must be able to land on an empty space
+                if game.machines[row as usize][column as usize].is_some() {
+                    continue;
+                }
+
+                // Does there exist at least one enemy machine in the path?
+                match first_machine_in_attack_range(direction, game, machine) {
+                    Some(_) => {
+                        attacks.push(Attack {
+                            direction,
+                            machine_row: row as usize,
+                            machine_column: column as usize,
+                        });
+                    }
+                    None => {}
+                }
             }
         }
     }
@@ -85,7 +130,7 @@ fn first_machine_in_attack_range(
 ) -> Option<Attack> {
     let mut row = machine.row as i32;
     let mut column = machine.column as i32;
-    for _i in 1..machine.machine.range {
+    for _i in 1..=machine.machine.range {
         match direction {
             MachineDirection::North => {
                 row -= 1;
@@ -121,4 +166,18 @@ fn first_machine_in_attack_range(
     }
 
     return None;
+}
+
+pub fn calculate_combat_power(game: &Game, machine: &GameMachine, attack: &Attack) -> i32 {
+    // The base 
+    let mut combat_power = game.board[machine.row][machine.column] as i32;
+    if machine.side == game.turn {
+        combat_power += machine.machine.attack;
+    }
+}
+
+pub fn get_skill_combat_power_modifier(game: &Game, machine: &GameMachine) -> i32 {
+    match machine.machine.skill {
+        MachineSkill::
+    }
 }

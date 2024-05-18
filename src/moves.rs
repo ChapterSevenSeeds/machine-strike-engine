@@ -71,8 +71,8 @@ fn expand_moves(
         return Vec::new();
     }
 
-    // If this isn't our first move and if the machine is not a flying machine and we are currently in a marsh, we can't move
-    if distance_travelled > 1 && !machine.machine.is_flying() && game.board[row][column] == Terrain::Marsh {
+    // If this isn't our first movement (not move) and if the machine is not a flying machine and if the machine is not a swoop type and we are currently in a marsh, we can't move
+    if distance_travelled > 1 && !machine.machine.is_flying() && !machine.machine.is_pull() && game.board[row][column] == Terrain::Marsh {
         return Vec::new();
     }
 

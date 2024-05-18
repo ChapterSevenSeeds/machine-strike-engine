@@ -17,4 +17,8 @@ impl Machine {
     pub fn is_flying(&self) -> bool {
         return self.machine_type == MachineType::Swoop;
     }
+
+    pub fn is_pull(&self) -> bool {
+        return self.machine_type == MachineType::Pull;
+    }
 }
