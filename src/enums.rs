@@ -1,6 +1,6 @@
 use std::fmt;
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Copy, Clone)]
 pub enum Terrain {
     Chasm = -2,
     Marsh = -1,
@@ -16,7 +16,7 @@ impl fmt::Display for Terrain {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum MachineSkill {
     None,
     /**
@@ -64,7 +64,7 @@ pub enum MachineSkill {
      */
     Climb,
     /**
-     * At the start of each turn, all friendly machines within Attack Range gain +1 Attack Power. Effects can stack.
+     * At the start of each turn, all friendly machines within Attack Range gain +1 Attack Power. Effects can stack. *Do the friendly machines that get the increase retain that increase even if they move out of attack range?*
      */
     Empower,
     /**
@@ -109,6 +109,7 @@ pub enum MachineType {
     Swoop,
 }
 
+#[derive(Copy, Clone)]
 pub enum MachineSide {
     Front = 1 << 0,
     Left = 1 << 1,

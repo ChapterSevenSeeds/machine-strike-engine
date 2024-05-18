@@ -26,7 +26,7 @@ fn main() {
         [ Terrain::Grassland, Terrain::Grassland, Terrain::Grassland, Terrain::Grassland, Terrain::Grassland, Terrain::Grassland, Terrain::Grassland, Terrain::Grassland, ],
     ];
 
-    let opponent_machine: GameMachine = GameMachine {
+    let mut opponent_machine: GameMachine = GameMachine {
         row: 2,
         column: 0,
         machine: STALKER,
@@ -38,7 +38,7 @@ fn main() {
         side: Player::Opponent,
     };
 
-    let game_machine: GameMachine = GameMachine {
+    let mut game_machine: GameMachine = GameMachine {
         row: 0,
         column: 0,
         machine: BELLOWBACK,
@@ -50,10 +50,10 @@ fn main() {
         side: Player::Player,
     };
 
-    let mut machines: [[Option<&GameMachine>; 8]; 8] = [
-        [Some(&game_machine), None, None, None, None, None, None, None, ],
+    let mut machines: [[Option<GameMachine>; 8]; 8] = [
+        [Some(game_machine), None, None, None, None, None, None, None, ],
         [None, None, None, None, None, None, None, None],
-        [Some(&opponent_machine), None, None, None, None, None, None, None, ],
+        [Some(opponent_machine), None, None, None, None, None, None, None, ],
         [None, None, None, None, None, None, None, None],
         [None, None, None, None, None, None, None, None],
         [None, None, None, None, None, None, None, None],
@@ -69,7 +69,7 @@ fn main() {
         turn: Player::Opponent,
     };
 
-    let attacks = calculate_attacks(&game, &game_machine);
+    let attacks = calculate_attacks(&game, game.machines[0][0].as_ref().unwrap());
     print_attacks(attacks);
 }
 
@@ -96,7 +96,7 @@ fn print_attacks(attacks: Vec<Attack>) {
 fn print_moves(moves: Vec<Move>) {
     for row in 0..8 {
         for col in 0..8 {
-            let m = moves.iter().find(|m| m.row == row && m.column == col);
+            let m = moves.iter().find(|m| m.destination_row == row && m.destination_column == col);
             match m {
                 Some(m) => {
                     print!("|{:>1}", if !m.requires_sprint { "X" } else { "S" });

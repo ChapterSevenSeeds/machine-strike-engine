@@ -5,15 +5,12 @@ use crate::{
 };
 
 pub struct Move {
-    pub row: usize,
-    pub column: usize,
+    pub destination_row: usize,
+    pub destination_column: usize,
     pub requires_sprint: bool,
-    pub found_at_depth: i32
-}
-
-pub struct MoveWithDepth {
-    pub m: Move,
-    pub depth: i32,
+    pub found_at_depth: i32,
+    pub source_row: usize,
+    pub source_column: usize,
 }
 
 pub fn calculate_moves(game: &Game, machine: &GameMachine) -> Vec<Move> {
@@ -43,8 +40,8 @@ pub fn calculate_moves(game: &Game, machine: &GameMachine) -> Vec<Move> {
 
         all_moves.append(&mut expand_moves(
             current_move.found_at_depth + 1,
-            current_move.row,
-            current_move.column,
+            current_move.destination_row,
+            current_move.destination_column,
             &machine,
             &game,
             &mut visited,
@@ -72,7 +69,11 @@ fn expand_moves(
     }
 
     // If this isn't our first movement (not move) and if the machine is not a flying machine and if the machine is not a swoop type and we are currently in a marsh, we can't move
-    if distance_travelled > 1 && !machine.machine.is_flying() && !machine.machine.is_pull() && game.board[row][column] == Terrain::Marsh {
+    if distance_travelled > 1
+        && !machine.machine.is_flying()
+        && !machine.machine.is_pull()
+        && game.board[row][column] == Terrain::Marsh
+    {
         return Vec::new();
     }
 
@@ -86,10 +87,12 @@ fn expand_moves(
         new_row = row - 1;
         if !is_spot_blocked_or_redundant(new_row, column, &game, &machine, visited) {
             moves.push(Move {
-                row: new_row,
-                column,
+                destination_row: new_row,
+                destination_column: column,
                 requires_sprint,
-                found_at_depth: distance_travelled
+                found_at_depth: distance_travelled,
+                source_row: machine.row,
+                source_column: machine.column,
             });
             visited[new_row][column] = true;
         }
@@ -100,10 +103,12 @@ fn expand_moves(
         new_row = row + 1;
         if !is_spot_blocked_or_redundant(new_row, column, &game, &machine, visited) {
             moves.push(Move {
-                row: new_row,
-                column,
+                destination_row: new_row,
+                destination_column: column,
                 requires_sprint,
-                found_at_depth: distance_travelled
+                found_at_depth: distance_travelled,
+                source_row: machine.row,
+                source_column: machine.column,
             });
             visited[new_row][column] = true;
         }
@@ -114,10 +119,12 @@ fn expand_moves(
         new_column = column - 1;
         if !is_spot_blocked_or_redundant(row, new_column, &game, &machine, visited) {
             moves.push(Move {
-                row,
-                column: new_column,
+                destination_row: row,
+                destination_column: new_column,
                 requires_sprint,
-                found_at_depth: distance_travelled
+                found_at_depth: distance_travelled,
+                source_row: machine.row,
+                source_column: machine.column,
             });
             visited[row][new_column] = true;
         }
@@ -128,10 +135,12 @@ fn expand_moves(
         new_column = column + 1;
         if !is_spot_blocked_or_redundant(row, new_column, &game, &machine, visited) {
             moves.push(Move {
-                row,
-                column: new_column,
+                destination_row: row,
+                destination_column: new_column,
                 requires_sprint,
-                found_at_depth: distance_travelled
+                found_at_depth: distance_travelled,
+                source_row: machine.row,
+                source_column: machine.column,
             });
             visited[row][new_column] = true;
         }
