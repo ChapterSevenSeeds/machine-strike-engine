@@ -8,10 +8,9 @@
             "args": [
                 "-g",
                 "*.cpp",
-                "*.h",
                 "-std=c++23",
                 "-o",
-                "bin/machine-strike-engine"
+                "machine-strike-engine"
             ],
             "group": "build"
         }

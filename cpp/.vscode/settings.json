@@ -1,0 +1,12 @@
+{
+    "files.associations": {
+        "*.ejs": "ejs",
+        "format": "cpp",
+        "iostream": "cpp",
+        "optional": "cpp",
+        "type_traits": "cpp",
+        "ostream": "cpp",
+        "vector": "cpp",
+        "array": "cpp"
+    }
+}

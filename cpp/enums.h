@@ -1,9 +1,8 @@
 #pragma once
 #include <string>
 
-#define ENUM_TO_STRING_CASE(name) case name: return #name
-
-enum class Terrain {
+enum class Terrain
+{
     Chasm = -2,
     Marsh = -1,
     Grassland = 0,
@@ -16,16 +15,25 @@ inline std::string to_string(Terrain terrain)
 {
     switch (terrain)
     {
-        ENUM_TO_STRING_CASE(Terrain::Chasm);
-        ENUM_TO_STRING_CASE(Terrain::Marsh);
-        ENUM_TO_STRING_CASE(Terrain::Grassland);
-        ENUM_TO_STRING_CASE(Terrain::Forest);
-        ENUM_TO_STRING_CASE(Terrain::Hill);
-        ENUM_TO_STRING_CASE(Terrain::Mountain);
+    case Terrain::Chasm:
+        return "Chasm";
+    case Terrain::Marsh:
+        return "Marsh";
+    case Terrain::Grassland:
+        return "Grassland";
+    case Terrain::Forest:
+        return "Forest";
+    case Terrain::Hill:
+        return "Hill";
+    case Terrain::Mountain:
+        return "Mountain";
+    default:
+        return "Unknown";
     }
 }
 
-enum class MachineSkill {
+enum class MachineSkill
+{
     None,
     /**
      * Gains +1 Combat Power when defending from an attack.
@@ -89,7 +97,8 @@ enum class MachineSkill {
     Blind,
 };
 
-enum class MachineType {
+enum class MachineType
+{
     /**
      * Always attacks at the maximum of its Attack Range.
      */
@@ -116,7 +125,8 @@ enum class MachineType {
     Swoop,
 };
 
-enum class MachineSide {
+enum class MachineSide
+{
     Front = 1 << 0,
     Left = 1 << 1,
     Right = 1 << 2,
@@ -128,19 +138,27 @@ inline MachineSide operator|(MachineSide a, MachineSide b)
     return static_cast<MachineSide>(static_cast<int>(a) | static_cast<int>(b));
 }
 
-enum class MachineDirection {
+inline MachineSide operator&(MachineSide a, MachineSide b)
+{
+    return static_cast<MachineSide>(static_cast<int>(a) & static_cast<int>(b));
+}
+
+enum class MachineDirection
+{
     North,
     East,
     South,
     West,
 };
 
-enum class Player {
+enum class Player
+{
     Player,
     Opponent,
 };
 
-enum class MachineState {
+enum class MachineState
+{
     Ready,            // Can move and/or attack
     Moved,            // Has moved, can attack and rotate
     Sprinted,         // Has sprinted, can only overcharge

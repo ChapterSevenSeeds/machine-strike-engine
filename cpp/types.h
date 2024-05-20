@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 
 template <typename T>
-using Board = T[8][8];
+using Board = std::array<std::array<T, 8>, 8>;

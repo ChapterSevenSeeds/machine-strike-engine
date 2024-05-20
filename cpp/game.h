@@ -21,10 +21,11 @@ public:
         std::vector<std::reference_wrapper<const Machine>> player_starting_pieces,
         Board<Terrain> terrain,
         Board<std::optional<std::reference_wrapper<GameMachine>>> machines,
-        Player turn
-    ) : opponent_starting_pieces(opponent_starting_pieces),
-        player_starting_pieces(player_starting_pieces),
-        terrain(),
-        machines(),
-        turn(turn) {}
+        Player turn) : opponent_starting_pieces(opponent_starting_pieces),
+                       player_starting_pieces(player_starting_pieces),
+                       terrain(terrain),
+                       machines(machines),
+                       turn(turn)
+    {
+    }
 };
