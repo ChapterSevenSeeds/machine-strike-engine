@@ -28,16 +28,6 @@ int32_t Game::count_machines_with_skill_able_to_attack_target_machine(
     return total;
 }
 
-void Game::unsafe_move_machine(
-    int32_t source_row,
-    int32_t source_column,
-    int32_t destination_row,
-    int32_t destination_column)
-{
-    board.machines[destination_row][destination_column] = board.machines[source_row][source_column];
-    board.machines[source_row][source_column] = std::nullopt;
-}
-
 void Game::make_move(Move &m)
 {
     auto &machine = board.machines[m.source_row][m.source_column];
@@ -50,7 +40,7 @@ void Game::make_move(Move &m)
         machine.value().get().machine_state = MachineState::Moved;
     }
 
-    unsafe_move_machine(
+    board.unsafe_move_machine(
         m.source_row,
         m.source_column,
         m.destination_row,
@@ -119,7 +109,7 @@ void Game::make_attack(Attack &attack)
         }
         else
         {
-            unsafe_move_machine(
+            board.unsafe_move_machine(
                 attack.attacked_row,
                 attack.attacked_column,
                 pulled_to_row,
@@ -168,7 +158,7 @@ void Game::make_attack(Attack &attack)
 
             // Move the machine to the next spot.
             // Unless the attack was malformed, the fallback spot should always be empty.
-            unsafe_move_machine(
+            board.unsafe_move_machine(
                 attack.source_row,
                 attack.source_column,
                 fallback_row,
@@ -176,7 +166,7 @@ void Game::make_attack(Attack &attack)
         }
         else
         {
-            unsafe_move_machine(
+            board.unsafe_move_machine(
                 attack.attacked_row,
                 attack.attacked_column,
                 pushed_to_row,
