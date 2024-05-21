@@ -60,7 +60,7 @@ void print_moves(std::vector<Move*> moves) {
 
 
 int main() {
-    Board<Terrain> terrain  {{
+    BoardType<Terrain> terrain  {{
         { Terrain::Grassland, Terrain::Grassland, Terrain::Grassland, Terrain::Grassland, Terrain::Grassland, Terrain::Grassland, Terrain::Grassland, Terrain::Grassland, },
         { Terrain::Grassland, Terrain::Grassland, Terrain::Grassland, Terrain::Grassland, Terrain::Grassland, Terrain::Grassland, Terrain::Grassland, Terrain::Grassland, },
         { Terrain::Grassland, Terrain::Grassland, Terrain::Grassland, Terrain::Grassland, Terrain::Grassland, Terrain::Grassland, Terrain::Grassland, Terrain::Grassland, },
@@ -74,7 +74,7 @@ int main() {
     GameMachine game_machine(std::ref(BELLOWBACK), 0, MachineDirection::South, 0, 0, MachineState::Ready, 0, 0, Player::Player);
     GameMachine opponent_machine(std::ref(STALKER), 0, MachineDirection::North, 2, 0, MachineState::Ready, 0, 0, Player::Opponent);
 
-    Board<std::optional<std::reference_wrapper<GameMachine>>> machines {{
+    BoardType<std::optional<std::reference_wrapper<GameMachine>>> machines {{
         {game_machine, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt },
         {std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt },
         {opponent_machine, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt },

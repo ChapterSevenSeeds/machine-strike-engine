@@ -6,6 +6,7 @@
 #include "game_machine.h"
 #include "types.h"
 #include "game.h"
+#include "board.h"
 
 class Move
 {
@@ -34,9 +35,9 @@ public:
 inline bool is_spot_blocked_or_redundant(
     int32_t row,
     int32_t column,
-    Game &game,
+    Board &board,
     GameMachine &machine,
-    Board<bool> &visited)
+    BoardType<bool> &visited)
 {
     // Are we out of bounds?
     if (row < 0 || column < 0 || row > 7 || column > 7)
@@ -51,13 +52,13 @@ inline bool is_spot_blocked_or_redundant(
     }
 
     // Is a machine already there?
-    if (game.machines[row][column].has_value())
+    if (board.machines[row][column].has_value())
     {
         return true;
     }
 
     // Is the machine not a flying machine and is the terrain a chasm?
-    if (!machine.machine.get().is_flying() && game.terrain[row][column] == Terrain::Chasm)
+    if (!machine.machine.get().is_flying() && board.terrain[row][column] == Terrain::Chasm)
     {
         return true;
     }
@@ -70,8 +71,8 @@ std::vector<Move *> expand_moves(
     int32_t row,
     int32_t column,
     GameMachine &machine,
-    Game &game,
-    Board<bool> &visited)
+    Board &board,
+    BoardType<bool> &visited)
 {
     // If we have already sprinted, we can't move
     if (distance_travelled > machine.machine.get().movement + 1)
@@ -80,7 +81,7 @@ std::vector<Move *> expand_moves(
     }
 
     // If this isn't our first movement (not move) and if the machine is not a flying machine and if the machine is not a pull type and we are currently in a marsh, we can't move
-    if (distance_travelled > 1 && !machine.machine.get().is_flying() && !machine.machine.get().is_pull() && game.terrain[row][column] == Terrain::Marsh)
+    if (distance_travelled > 1 && !machine.machine.get().is_flying() && !machine.machine.get().is_pull() && board.terrain[row][column] == Terrain::Marsh)
     {
         return std::vector<Move *>{};
     }
@@ -90,45 +91,25 @@ std::vector<Move *> expand_moves(
     int32_t new_row;
     int32_t new_column;
 
-    // Go up
-    new_row = row - 1;
-    if (!is_spot_blocked_or_redundant(new_row, column, game, machine, visited))
+    for (const auto &pair : {std::make_pair(-1, 0), std::make_pair(1, 0), std::make_pair(0, -1), std::make_pair(0, 1)})
     {
-        moves.push_back(new Move(new_row, column, requires_sprint, distance_travelled, machine.row, machine.column));
-        visited[new_row][column] = true;
-    }
+        new_row = row + pair.first;
+        new_column = column + pair.second;
 
-    // Go down
-    new_row = row + 1;
-    if (!is_spot_blocked_or_redundant(new_row, column, game, machine, visited))
-    {
-        moves.push_back(new Move(new_row, column, requires_sprint, distance_travelled, machine.row, machine.column));
-        visited[new_row][column] = true;
-    }
+        if (is_spot_blocked_or_redundant(new_row, new_column, board, machine, visited))
+            continue;
 
-    // Go left
-    new_column = column - 1;
-    if (!is_spot_blocked_or_redundant(row, new_column, game, machine, visited))
-    {
-        moves.push_back(new Move(row, new_column, requires_sprint, distance_travelled, machine.row, machine.column));
-        visited[row][new_column] = true;
-    }
-
-    // Go right
-    new_column = column + 1;
-    if (!is_spot_blocked_or_redundant(row, new_column, game, machine, visited))
-    {
-        moves.push_back(new Move(row, new_column, requires_sprint, distance_travelled, machine.row, machine.column));
-        visited[row][new_column] = true;
+        moves.push_back(new Move(new_row, new_column, requires_sprint, distance_travelled, machine.row, machine.column));
+        visited[new_row][new_column] = true;
     }
 
     return moves;
 }
 
-std::vector<Move *> calculate_moves(Game &game, GameMachine &machine)
+std::vector<Move *> calculate_moves(Board &board, GameMachine &machine)
 {
-    Board<bool> visited = {false};
-    std::vector<Move *> all_moves = expand_moves(1, machine.row, machine.column, machine, game, visited);
+    BoardType<bool> visited = {false};
+    std::vector<Move *> all_moves = expand_moves(1, machine.row, machine.column, machine, board, visited);
 
     auto expanded_index = 0;
     do
@@ -140,7 +121,7 @@ std::vector<Move *> calculate_moves(Game &game, GameMachine &machine)
             current_move->destination_row,
             current_move->destination_column,
             machine,
-            game,
+            board,
             visited);
 
         all_moves.insert(all_moves.end(), moves.begin(), moves.end());

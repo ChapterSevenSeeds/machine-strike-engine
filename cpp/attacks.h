@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <cstdint>
+#include <optional>
 #include "game.h"
 #include "enums.h"
 #include "game_machine.h"
@@ -26,7 +27,7 @@ public:
                                  source_column(source_column) {}
 };
 
-Attack *first_machine_in_attack_range(MachineDirection direction, Game &game, GameMachine &machine)
+std::optional<Attack> first_machine_in_attack_range(MachineDirection direction, Game &game, GameMachine &machine)
 {
     int32_t row = machine.row;
     int32_t column = machine.column;
@@ -55,7 +56,7 @@ Attack *first_machine_in_attack_range(MachineDirection direction, Game &game, Ga
 
         if (game.machines[row][column].has_value() && game.machines[row][column].value().get().side != machine.side)
         {
-            return new Attack(
+            return Attack(
                 direction,
                 row,
                 column,
@@ -64,12 +65,12 @@ Attack *first_machine_in_attack_range(MachineDirection direction, Game &game, Ga
         }
     }
 
-    return nullptr;
+    return std::nullopt;
 }
 
-std::vector<Attack *> calculate_attacks(Game &game, GameMachine &machine)
+std::vector<Attack> calculate_attacks(Game &game, GameMachine &machine)
 {
-    std::vector<Attack *> attacks;
+    std::vector<Attack> attacks;
 
     for (auto direction : {
              MachineDirection::North,
@@ -86,9 +87,9 @@ std::vector<Attack *> calculate_attacks(Game &game, GameMachine &machine)
         case MachineType::Pull:
         {
             auto attack = first_machine_in_attack_range(direction, game, machine);
-            if (attack != nullptr)
+            if (attack.has_value())
             {
-                attacks.push_back(attack);
+                attacks.push_back(attack.value());
             }
             break;
         }
@@ -139,7 +140,7 @@ std::vector<Attack *> calculate_attacks(Game &game, GameMachine &machine)
 
             if (game.machines[row][column].has_value() && game.machines[row][column].value().get().side != machine.side)
             {
-                attacks.push_back(new Attack(
+                attacks.push_back(Attack(
                     direction,
                     row,
                     column,
@@ -201,9 +202,9 @@ std::vector<Attack *> calculate_attacks(Game &game, GameMachine &machine)
             }
 
             // Does there exist at least one enemy machine in the path?
-            if (first_machine_in_attack_range(direction, game, machine) != nullptr) // Fix this memory leak
+            if (first_machine_in_attack_range(direction, game, machine).has_value())
             {
-                attacks.push_back(new Attack(
+                attacks.push_back(Attack(
                     direction,
                     row,
                     column,
@@ -325,14 +326,14 @@ int32_t get_skill_combat_power_modifier_when_attacking(Game &game, GameMachine &
     }
 
     // Apply any attack power gains from friendly empower machines and subtract any attack power lost from enemy blinding machines.
-    let modifier = game.count_machines_with_skill_able_to_attack_target_machine(
-                       machine,
-                       MachineSkill::Empower,
-                       Player::Player, ) -
-                   game.count_machines_with_skill_able_to_attack_target_machine(
-                       machine,
-                       MachineSkill::Blind,
-                       Player::Opponent, );
+    auto modifier = game.count_machines_with_skill_able_to_attack_target_machine(
+                        machine,
+                        MachineSkill::Empower,
+                        Player::Player) -
+                    game.count_machines_with_skill_able_to_attack_target_machine(
+                        machine,
+                        MachineSkill::Blind,
+                        Player::Opponent);
 
     return combat_power + modifier;
 }
