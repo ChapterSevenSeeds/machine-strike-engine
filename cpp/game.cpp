@@ -5,6 +5,7 @@
 #include "game.h"
 #include "enums.h"
 #include "attacks.h"
+#include "utils.h"
 
 int32_t Game::count_machines_with_skill_able_to_attack_target_machine(
     GameMachine &target,
@@ -49,131 +50,22 @@ void Game::make_move(Move &m)
 
 void Game::make_attack(Attack &attack)
 {
-    auto &attacker = board.machines[attack.source_row][attack.source_column].value().get();
-    auto attacker_combat_power = calculate_combat_power(*this, attacker, attack);
-
-    if (attacker.machine.get().machine_type == MachineType::Dash)
+    switch (board.machines[attack.source_row][attack.source_column].value().get().machine.get().machine_type)
     {
-        // When attacking everything in its path, is the combat power of friendly machines used as if they were enemy machines?
-        todo("Dash attacks are not implemented yet");
-    }
-
-    auto &defender = board.machines[attack.attacked_row][attack.attacked_column].value().get();
-    auto defender_combat_power = calculate_combat_power(*this, defender, attack);
-
-    if (attacker_combat_power <= defender_combat_power)
-    {
-        todo("Perform defense break"); // Can defense break trigger a knockback?
-    }
-
-    // Apply the attack
-    defender.health -= attacker_combat_power - defender_combat_power;
-
-    switch (attacker.machine.get().machine_type)
-    {
+    case MachineType::Dash:
+        perform_dash_attack(attack);
+        break;
     case MachineType::Gunner:
+        perform_gunner_attack(attack);
+        break;
     case MachineType::Melee:
-        // Attack happens and nothing else.
-        attacker.machine_state = MachineState::Attacked; // Attacked and moved?
+        perform_melee_attack(attack);
         break;
     case MachineType::Pull:
-        // Can a pull ram knock a machine into a chasm? If so, does anything happen?
-        // Pull the enemy one terrain closer to it.
-        int32_t pulled_to_row = 0;
-        int32_t pulled_to_column = 0;
-        switch (attack.attack_direction_from_source)
-        {
-        case MachineDirection::North:
-            pulled_to_row = attack.attacked_row + 1;
-            pulled_to_column = attack.attacked_column;
-            break;
-        case MachineDirection::East:
-            pulled_to_row = attack.attacked_row;
-            pulled_to_column = attack.attacked_column - 1;
-            break;
-        case MachineDirection::South:
-            pulled_to_row = attack.attacked_row - 1;
-            pulled_to_column = attack.attacked_column;
-            break;
-        case MachineDirection::West:
-            pulled_to_row = attack.attacked_row;
-            pulled_to_column = attack.attacked_column + 1;
-            break;
-        }
-
-        if (board.machines[pulled_to_row][pulled_to_column].has_value())
-        {
-            // Apply one damage point to the machine that was pulled and to the machine occupying the space it was pulled to.
-            board.machines[pulled_to_row][pulled_to_column].value().get().health -= 1;
-            defender.health -= 1;
-        }
-        else
-        {
-            board.unsafe_move_machine(
-                attack.attacked_row,
-                attack.attacked_column,
-                pulled_to_row,
-                pulled_to_column);
-        }
+        perform_pull_attack(attack);
         break;
     case MachineType::Ram:
-        // Push the enemy one terrain away from it and move into the spot it was pushed from.
-        int32_t pushed_to_row = 0;
-        int32_t pushed_to_column = 0;
-        int32_t fallback_row = 0;
-        int32_t fallback_column = 0;
-        switch (attack.attack_direction_from_source)
-        {
-        case MachineDirection::North:
-            pushed_to_row = attack.attacked_row - 1;
-            pushed_to_column = attack.attacked_column;
-            fallback_row = attack.attacked_row + 1;
-            fallback_column = attack.attacked_column;
-            break;
-        case MachineDirection::East:
-            pushed_to_row = attack.attacked_row;
-            pushed_to_column = attack.attacked_column + 1;
-            fallback_row = attack.attacked_row;
-            fallback_column = attack.attacked_column - 1;
-            break;
-        case MachineDirection::South:
-            pushed_to_row = attack.attacked_row + 1;
-            pushed_to_column = attack.attacked_column;
-            fallback_row = attack.attacked_row - 1;
-            fallback_column = attack.attacked_column;
-            break;
-        case MachineDirection::West:
-            pushed_to_row = attack.attacked_row;
-            pushed_to_column = attack.attacked_column - 1;
-            fallback_row = attack.attacked_row;
-            fallback_column = attack.attacked_column + 1;
-            break;
-        }
-
-        if (board.machines[pushed_to_row][pushed_to_column].has_value())
-        {
-            // Apply one damage point to the machine that was pushed and to the machine occupying the space it was pushed to.
-            board.machines[pushed_to_row][pushed_to_column].value().get().health -= 1;
-            defender.health -= 1;
-
-            // Move the machine to the next spot.
-            // Unless the attack was malformed, the fallback spot should always be empty.
-            board.unsafe_move_machine(
-                attack.source_row,
-                attack.source_column,
-                fallback_row,
-                fallback_column);
-        }
-        else
-        {
-            board.unsafe_move_machine(
-                attack.attacked_row,
-                attack.attacked_column,
-                pushed_to_row,
-                pushed_to_column);
-        }
+        perform_ram_attack(attack);
         break;
-    case MachineType::Dash:
-        todo("Dash attacks are not implemented yet");
     }
 }

@@ -166,3 +166,8 @@ enum class MachineState
     MovedAndAttacked, // Has moved and attacked, can rotate
     Overcharged,      // Can't do anything
 };
+
+enum class Rotation {
+    Clockwise,
+    CounterClockwise,
+};

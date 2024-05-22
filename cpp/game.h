@@ -33,6 +33,11 @@ public:
         MachineSkill attacking_machine_skill,
         Player attacking_side);
 
-    void make_move(Move& m);
-    void make_attack(Attack& attack);
+    void make_move(Move &m);
+    void make_attack(Attack &attack);
+    void perform_dash_attack(Attack &attack);
+    void perform_gunner_attack(Attack &attack);
+    void perform_melee_attack(Attack &attack);
+    void perform_pull_attack(Attack &attack);
+    void perform_ram_attack(Attack &attack);
 };
