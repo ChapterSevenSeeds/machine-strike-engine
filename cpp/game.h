@@ -40,4 +40,6 @@ public:
     void perform_melee_attack(Attack &attack);
     void perform_pull_attack(Attack &attack);
     void perform_ram_attack(Attack &attack);
+    void perform_swoop_attack(Attack &attack);
+    bool knock_machine(GameMachine &machine, MachineDirection direction);
 };

@@ -42,6 +42,30 @@ void Game::perform_dash_attack(Attack &attack)
     post_attack(attacker);
 }
 
+// Returns true if the machine was knocked one space, false otherwise.
+bool Game::knock_machine(GameMachine &machine, MachineDirection direction)
+{
+    auto [next_row, next_column] = traverse_direction(machine.row, machine.column, direction);
+    if (next_row < 0 || next_row >= 8 || next_column < 0 || next_column >= 8)
+    {
+        // The machine is knocked into the wall and loses 1 health.
+        machine.health--;
+        return false;
+    }
+
+    if (board.machines[next_row][next_column].has_value())
+    {
+        // The machine is knocked into another machine and loses 1 health.
+        machine.health--;
+        board.machines[next_row][next_column].value().get().health--;
+        return false;
+    }
+
+    // The machine is knocked back one space. What about dash and pull attacks?
+    board.unsafe_move_machine(machine.row, machine.column, next_row, next_column);
+    return true;
+}
+
 std::tuple<GameMachine &, int32_t, GameMachine &, int32_t> perform_direct_attack_prelude(Game &game, Attack &attack)
 {
     auto &attacker = game.board.machines[attack.source_row][attack.source_column].value().get();
@@ -51,7 +75,11 @@ std::tuple<GameMachine &, int32_t, GameMachine &, int32_t> perform_direct_attack
 
     if (attacker_combat_power <= defender_combat_power)
     {
-        todo("Perform defense break"); // Can defense break trigger a knockback?
+        attacker.health--;
+        defender.health--;
+
+        // Does this apply to pull attacks and dash attacks?
+        game.knock_machine(defender, attack.attack_direction_from_source);
     }
     else
     {
@@ -78,43 +106,8 @@ void Game::perform_pull_attack(Attack &attack)
 {
     auto [defender, _, attacker, _] = perform_direct_attack_prelude(*this, attack);
     // Can a pull ram knock a machine into a chasm? If so, does anything happen?
-    // Pull the enemy one terrain closer to it.
-    int32_t pulled_to_row = 0;
-    int32_t pulled_to_column = 0;
-    switch (attack.attack_direction_from_source)
-    {
-    case MachineDirection::North:
-        pulled_to_row = attack.attacked_row + 1;
-        pulled_to_column = attack.attacked_column;
-        break;
-    case MachineDirection::East:
-        pulled_to_row = attack.attacked_row;
-        pulled_to_column = attack.attacked_column - 1;
-        break;
-    case MachineDirection::South:
-        pulled_to_row = attack.attacked_row - 1;
-        pulled_to_column = attack.attacked_column;
-        break;
-    case MachineDirection::West:
-        pulled_to_row = attack.attacked_row;
-        pulled_to_column = attack.attacked_column + 1;
-        break;
-    }
 
-    if (board.machines[pulled_to_row][pulled_to_column].has_value())
-    {
-        // Apply one damage point to the machine that was pulled and to the machine occupying the space it was pulled to.
-        board.machines[pulled_to_row][pulled_to_column].value().get().health -= 1;
-        defender.health -= 1;
-    }
-    else
-    {
-        board.unsafe_move_machine(
-            attack.attacked_row,
-            attack.attacked_column,
-            pulled_to_row,
-            pulled_to_column);
-    }
+    knock_machine(defender, opposite_direction(attack.attack_direction_from_source));
 
     post_attack(attacker);
 }
@@ -123,61 +116,42 @@ void Game::perform_ram_attack(Attack &attack)
 {
     auto [defender, _, attacker, _] = perform_direct_attack_prelude(*this, attack);
 
-    // Push the enemy one terrain away from it and move into the spot it was pushed from.
-    int32_t pushed_to_row = 0;
-    int32_t pushed_to_column = 0;
-    int32_t fallback_row = 0;
-    int32_t fallback_column = 0;
-    switch (attack.attack_direction_from_source)
-    {
-    case MachineDirection::North:
-        pushed_to_row = attack.attacked_row - 1;
-        pushed_to_column = attack.attacked_column;
-        fallback_row = attack.attacked_row + 1;
-        fallback_column = attack.attacked_column;
-        break;
-    case MachineDirection::East:
-        pushed_to_row = attack.attacked_row;
-        pushed_to_column = attack.attacked_column + 1;
-        fallback_row = attack.attacked_row;
-        fallback_column = attack.attacked_column - 1;
-        break;
-    case MachineDirection::South:
-        pushed_to_row = attack.attacked_row + 1;
-        pushed_to_column = attack.attacked_column;
-        fallback_row = attack.attacked_row - 1;
-        fallback_column = attack.attacked_column;
-        break;
-    case MachineDirection::West:
-        pushed_to_row = attack.attacked_row;
-        pushed_to_column = attack.attacked_column - 1;
-        fallback_row = attack.attacked_row;
-        fallback_column = attack.attacked_column + 1;
-        break;
-    }
+    auto knocked = knock_machine(defender, attack.attack_direction_from_source);
 
-    if (board.machines[pushed_to_row][pushed_to_column].has_value())
+    if (knocked)
     {
-        // Apply one damage point to the machine that was pushed and to the machine occupying the space it was pushed to.
-        board.machines[pushed_to_row][pushed_to_column].value().get().health -= 1;
-        defender.health -= 1;
-
-        // Move the machine to the next spot.
-        // Unless the attack was malformed, the fallback spot should always be empty.
+        // The machine takes the spot of the machine that was knocked.
         board.unsafe_move_machine(
             attack.source_row,
             attack.source_column,
-            fallback_row,
-            fallback_column);
+            attack.attacked_row,
+            attack.attacked_column);
     }
     else
     {
+        // The machine is moved to space next to the machine that was attacked.
+        auto [next_row, next_column] = traverse_direction(attack.attacked_row, attack.attacked_column, opposite_direction(attack.attack_direction_from_source));
         board.unsafe_move_machine(
-            attack.attacked_row,
-            attack.attacked_column,
-            pushed_to_row,
-            pushed_to_column);
+            attack.source_row,
+            attack.source_column,
+            next_row,
+            next_column);
     }
+
+    post_attack(attacker);
+}
+
+void Game::perform_swoop_attack(Attack &attack)
+{
+    auto [defender, _, attacker, _] = perform_direct_attack_prelude(*this, attack);
+
+    // The attacker moves next to the defender.
+    auto [next_row, next_column] = traverse_direction(attack.attacked_row, attack.attacked_column, opposite_direction(attack.attack_direction_from_source));
+    board.unsafe_move_machine(
+        attack.source_row,
+        attack.source_column,
+        next_row,
+        next_column);
 
     post_attack(attacker);
 }

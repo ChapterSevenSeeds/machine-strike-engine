@@ -1,6 +1,21 @@
 #include "enums.h"
 #include <utility>
 
+MachineDirection opposite_direction(MachineDirection direction)
+{
+    switch (direction)
+    {
+    case MachineDirection::North:
+        return MachineDirection::South;
+    case MachineDirection::South:
+        return MachineDirection::North;
+    case MachineDirection::West:
+        return MachineDirection::East;
+    case MachineDirection::East:
+        return MachineDirection::West;
+    }
+}
+
 std::pair<int32_t, int32_t> traverse_direction(int32_t row, int32_t column, MachineDirection direction, int32_t distance = 1)
 {
     switch (direction)

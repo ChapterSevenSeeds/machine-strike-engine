@@ -67,5 +67,8 @@ void Game::make_attack(Attack &attack)
     case MachineType::Ram:
         perform_ram_attack(attack);
         break;
+    case MachineType::Swoop:
+        perform_swoop_attack(attack);
+        break;
     }
 }
