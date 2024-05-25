@@ -72,3 +72,40 @@ void Game::make_attack(Attack &attack)
         break;
     }
 }
+
+void Game::pre_turn()
+{
+    for (const auto &machine : board)
+    {
+        if (!machine.has_value())
+            continue;
+
+        auto &machine_ref = machine.value().get();
+
+        switch (machine_ref.machine.get().skill)
+        {
+        case MachineSkill::Spray:
+        {
+            auto attacks = calculate_attacks(*this, machine_ref);
+            for (const auto &attack : attacks)
+            {
+                if (!board.is_space_occupied(attack.attacked_row, attack.attacked_column))
+                    continue;
+                --board.machines[attack.attacked_row][attack.attacked_column].value().get().health;
+            }
+            break;
+        }
+        case MachineSkill::Whiplash:
+        {
+            auto attacks = calculate_attacks(*this, machine_ref);
+            for (const auto &attack : attacks)
+            {
+                if (!board.is_space_occupied(attack.attacked_row, attack.attacked_column))
+                    continue;
+                board.machines[attack.attacked_row][attack.attacked_column].value().get().direction = opposite_direction(board.machines[attack.attacked_row][attack.attacked_column].value().get().direction);
+            }
+            break;
+        }
+        }
+    }
+}

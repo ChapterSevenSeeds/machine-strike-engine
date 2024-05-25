@@ -32,20 +32,20 @@ inline std::string to_string(Terrain terrain)
     }
 }
 
-inline Terrain operator++(Terrain terrain)
+inline Terrain operator++(Terrain& terrain)
 {
     auto value = static_cast<int>(terrain) + 1;
     if (value > static_cast<int>(Terrain::Mountain))
-        return Terrain::Mountain;
-    return static_cast<Terrain>(value);
+        return terrain = Terrain::Mountain;
+    return terrain = static_cast<Terrain>(value);
 }
 
-inline Terrain operator--(Terrain terrain)
+inline Terrain operator--(Terrain& terrain)
 {
     auto value = static_cast<int>(terrain) - 1;
     if (value < static_cast<int>(Terrain::Chasm))
-        return Terrain::Chasm;
-    return static_cast<Terrain>(value);
+        return terrain = Terrain::Chasm;
+    return terrain = static_cast<Terrain>(value);
 }
 
 enum class MachineSkill

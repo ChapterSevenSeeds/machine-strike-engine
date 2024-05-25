@@ -42,4 +42,6 @@ public:
     void perform_ram_attack(Attack &attack);
     void perform_swoop_attack(Attack &attack);
     bool knock_machine(GameMachine &machine, MachineDirection direction);
+    void perform_post_attack_skills(GameMachine &attacker, GameMachine &defender, Attack &attack);
+    void pre_turn();
 };

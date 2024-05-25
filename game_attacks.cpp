@@ -5,7 +5,12 @@
 
 void post_attack(GameMachine &attacker)
 {
-    attacker.machine_state = attacker.machine_state == MachineState::Moved ? MachineState::MovedAndAttacked : MachineState::Attacked;
+    attacker.machine_state =
+        attacker.machine_state == MachineState::Attacked || attacker.machine_state == MachineState::MovedAndAttacked
+            ? MachineState::Overcharged
+        : attacker.machine_state == MachineState::Moved
+            ? MachineState::MovedAndAttacked
+            : MachineState::Attacked;
 }
 
 void Game::perform_dash_attack(Attack &attack)
@@ -154,4 +159,50 @@ void Game::perform_swoop_attack(Attack &attack)
         next_column);
 
     post_attack(attacker);
+}
+
+void Game::perform_post_attack_skills(GameMachine &attacker, GameMachine &defender, Attack &attack)
+{
+    // Figure out how the sweep skill works.
+    switch (attacker.machine.get().skill)
+    {
+    case MachineSkill::AlterTerrain:
+        // Does the terrain the defender was initially on get changed? Or is it the terrain after the defender is moved, if applicable?
+        // And what if the attacker moves? Is it the terrain below the attacker before or after the move?
+        ++board.terrain[attack.source_row][attack.source_column];
+        ++board.terrain[attack.attacked_row][attack.attacked_column];
+        break;
+    case MachineSkill::Burn:
+        if (board.terrain[attack.attacked_row][attack.attacked_column] == Terrain::Forest)
+        {
+            board.terrain[attack.attacked_row][attack.attacked_column] = Terrain::Grassland;
+        }
+        break;
+    case MachineSkill::Retaliate:
+    {
+        auto attacks = calculate_attacks(*this, defender);
+        for (auto &a : attacks)
+        {
+            if (a.attacked_row == attacker.row && a.attacked_column == attacker.column)
+            {
+                defender.direction = a.attack_direction_from_source;
+                --attacker.health;
+                break;
+            }
+        }
+        break;
+    }
+    case MachineSkill::Freeze:
+        if (board.terrain[attack.attacked_row][attack.attacked_column] == Terrain::Marsh)
+        {
+            board.terrain[attack.attacked_row][attack.attacked_column] = Terrain::Grassland;
+        }
+        break;
+    case MachineSkill::Growth:
+        if (board.terrain[attack.attacked_row][attack.attacked_column] == Terrain::Grassland)
+        {
+            board.terrain[attack.attacked_row][attack.attacked_column] = Terrain::Forest;
+        }
+        break;
+    }
 }
