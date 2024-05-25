@@ -5,41 +5,13 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "lldb",
+            "type": "cppdbg",
             "request": "launch",
             "name": "Debug executable 'machine-strike-engine'",
-            "cargo": {
-                "args": [
-                    "build",
-                    "--bin=machine-strike-engine",
-                    "--package=machine-strike-engine"
-                ],
-                "filter": {
-                    "name": "machine-strike-engine",
-                    "kind": "bin"
-                }
-            },
+            "program": "${workspaceFolder}/machine-strike-engine",
             "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug unit tests in executable 'machine-strike-engine'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--bin=machine-strike-engine",
-                    "--package=machine-strike-engine"
-                ],
-                "filter": {
-                    "name": "machine-strike-engine",
-                    "kind": "bin"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "build-debug",
         }
     ]
 }
