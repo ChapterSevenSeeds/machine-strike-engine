@@ -31,24 +31,25 @@ std::pair<int32_t, int32_t> traverse_direction(int32_t row, int32_t column, Mach
     }
 }
 
+MachineDirection rotate_direction(MachineDirection direction, Rotation rotation)
+{
+    switch (direction)
+    {
+    case MachineDirection::North:
+        return rotation == Rotation::Clockwise ? MachineDirection::East : MachineDirection::West;
+    case MachineDirection::East:
+        return rotation == Rotation::Clockwise ? MachineDirection::South : MachineDirection::North;
+    case MachineDirection::South:
+        return rotation == Rotation::Clockwise ? MachineDirection::West : MachineDirection::East;
+    case MachineDirection::West:
+        return rotation == Rotation::Clockwise ? MachineDirection::North : MachineDirection::South;
+    }
+}
+
 void rotate_machine(MachineDirection &direction, Rotation rotation, int32_t turns)
 {
     while (turns-- > 0)
     {
-        switch (direction)
-        {
-        case MachineDirection::North:
-            direction = rotation == Rotation::Clockwise ? MachineDirection::East : MachineDirection::West;
-            break;
-        case MachineDirection::East:
-            direction = rotation == Rotation::Clockwise ? MachineDirection::South : MachineDirection::North;
-            break;
-        case MachineDirection::South:
-            direction = rotation == Rotation::Clockwise ? MachineDirection::West : MachineDirection::East;
-            break;
-        case MachineDirection::West:
-            direction = rotation == Rotation::Clockwise ? MachineDirection::North : MachineDirection::South;
-            break;
-        }
+        direction = rotate_direction(direction, rotation);
     }
 }

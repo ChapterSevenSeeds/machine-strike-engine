@@ -31,7 +31,6 @@ void Game::perform_dash_attack(Attack &attack)
         if (board.machines[current_row][current_column].has_value())
         {
             auto &machine = board.machines[current_row][current_column].value().get();
-            // How does this work with the defender's combat power? Are there multiple defense breaks? What about friendly machines?
             auto machine_combat_power = calculate_combat_power(*this, machine, attack);
             machine.health -= attacker_combat_power - machine_combat_power;
             rotate_machine(machine.direction, Rotation::Clockwise, 2);
@@ -66,7 +65,7 @@ bool Game::knock_machine(GameMachine &machine, MachineDirection direction)
         return false;
     }
 
-    // The machine is knocked back one space. What about dash and pull attacks?
+    // The machine is knocked back one space.
     board.unsafe_move_machine(machine.row, machine.column, next_row, next_column);
     return true;
 }
@@ -78,13 +77,14 @@ std::tuple<GameMachine &, int32_t, GameMachine &, int32_t> perform_direct_attack
     auto &defender = game.board.machines[attack.attacked_row][attack.attacked_column].value().get();
     auto defender_combat_power = calculate_combat_power(game, defender, attack);
 
+    // Defense break.
     if (attacker_combat_power <= defender_combat_power)
     {
         attacker.health--;
         defender.health--;
 
-        // Does this apply to pull attacks and dash attacks?
-        game.knock_machine(defender, attack.attack_direction_from_source);
+        if (attacker.machine.get().machine_type != MachineType::Ram) // Ram attacks only knock the machine once, even if there was a defense break.
+            game.knock_machine(defender, attack.attack_direction_from_source);
     }
     else
     {
@@ -163,13 +163,10 @@ void Game::perform_swoop_attack(Attack &attack)
 
 void Game::perform_post_attack_skills(GameMachine &attacker, GameMachine &defender, Attack &attack)
 {
-    // Figure out how the sweep skill works.
     switch (attacker.machine.get().skill)
     {
     case MachineSkill::AlterTerrain:
-        // Does the terrain the defender was initially on get changed? Or is it the terrain after the defender is moved, if applicable?
-        // And what if the attacker moves? Is it the terrain below the attacker before or after the move?
-        ++board.terrain[attack.source_row][attack.source_column];
+        --board.terrain[attack.source_row][attack.source_column];
         ++board.terrain[attack.attacked_row][attack.attacked_column];
         break;
     case MachineSkill::Burn:

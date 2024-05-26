@@ -96,7 +96,7 @@ enum class MachineSkill
      */
     Climb,
     /**
-     * At the start of each turn, all friendly machines within Attack Range gain +1 Attack Power. Effects can stack. *Do the friendly machines that get the increase retain that increase even if they move out of attack range?*
+     * At the start of each turn, all friendly machines within Attack Range gain +1 Attack Power. Effects can stack. *Just attack power and not defense power?*
      */
     Empower,
     /**

@@ -14,8 +14,7 @@ public:
     int32_t row;
     int32_t column;
     MachineState machine_state;
-    int32_t attack_power;
-    int32_t defense_power;
+    int32_t attack_power_modifier;
     Player side;
 
     GameMachine(
@@ -25,8 +24,7 @@ public:
         int32_t row,
         int32_t column,
         MachineState machine_state,
-        int32_t attack_power,
-        int32_t defense_power,
+        int32_t attack_power_modifier,
         Player side
     ) : machine(machine),
         health(health),
@@ -34,7 +32,6 @@ public:
         row(row),
         column(column),
         machine_state(machine_state),
-        attack_power(attack_power),
-        defense_power(defense_power),
+        attack_power_modifier(attack_power_modifier),
         side(side) {}
 };

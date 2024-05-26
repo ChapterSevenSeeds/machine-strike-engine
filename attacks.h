@@ -10,6 +10,8 @@ class Attack
 {
 public:
     MachineDirection attack_direction_from_source;
+    int32_t move_to_row;
+    int32_t move_to_column;
     int32_t attacked_row;
     int32_t attacked_column;
     int32_t source_row;
@@ -17,10 +19,14 @@ public:
 
     Attack(
         MachineDirection attack_direction_from_source,
+        int32_t move_to_row,
+        int32_t move_to_column,
         int32_t attacked_row,
         int32_t attacked_column,
         int32_t source_row,
         int32_t source_column) : attack_direction_from_source(attack_direction_from_source),
+                                 move_to_row(move_to_row),
+                                 move_to_column(move_to_column),
                                  attacked_row(attacked_row),
                                  attacked_column(attacked_column),
                                  source_row(source_row),
@@ -29,32 +35,16 @@ public:
 
 std::optional<Attack> first_machine_in_attack_range(MachineDirection direction, Game &game, GameMachine &machine)
 {
-    int32_t row = machine.row;
-    int32_t column = machine.column;
     for (int i = 0; i < machine.machine.get().range; ++i)
     {
-        switch (direction)
-        {
-        case MachineDirection::North:
-            row -= 1;
-            break;
-        case MachineDirection::East:
-            column += 1;
-            break;
-        case MachineDirection::South:
-            row += 1;
-            break;
-        case MachineDirection::West:
-            column -= 1;
-            break;
-        }
+        auto [row, column] = traverse_direction(machine.row, machine.column, direction);
 
         if (row >= 8 || column >= 8 || row < 0 || column < 0)
         {
             break;
         }
 
-        if (game.machines[row][column].has_value() && game.machines[row][column].value().get().side != machine.side)
+        if (game.board.machines[row][column].has_value() && game.board.machines[row][column].value().get().side != machine.side)
         {
             return Attack(
                 direction,

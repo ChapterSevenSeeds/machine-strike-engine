@@ -77,6 +77,8 @@ void Game::pre_turn()
 {
     for (const auto &machine : board)
     {
+        machine.value().get().attack_power_modifier = 0;
+
         if (!machine.has_value())
             continue;
 
@@ -103,6 +105,30 @@ void Game::pre_turn()
                 if (!board.is_space_occupied(attack.attacked_row, attack.attacked_column))
                     continue;
                 board.machines[attack.attacked_row][attack.attacked_column].value().get().direction = opposite_direction(board.machines[attack.attacked_row][attack.attacked_column].value().get().direction);
+            }
+            break;
+        }
+        case MachineSkill::Empower:
+        {
+            auto attacks = calculate_attacks(*this, machine_ref);
+            for (const auto &attack : attacks)
+            {
+                if (!board.is_space_occupied(attack.attacked_row, attack.attacked_column) || board.machines[attack.attacked_row][attack.attacked_column].value().get().side != machine_ref.side)
+                    continue;
+
+                ++board.machines[attack.attacked_row][attack.attacked_column].value().get().attack_power_modifier;
+            }
+            break;
+        }
+        case MachineSkill::Blind:
+        {
+            auto attacks = calculate_attacks(*this, machine_ref);
+            for (const auto &attack : attacks)
+            {
+                if (!board.is_space_occupied(attack.attacked_row, attack.attacked_column) || board.machines[attack.attacked_row][attack.attacked_column].value().get().side == machine_ref.side)
+                    continue;
+
+                --board.machines[attack.attacked_row][attack.attacked_column].value().get().attack_power_modifier;
             }
             break;
         }
