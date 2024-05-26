@@ -1,4 +1,5 @@
 #include "enums.h"
+#include "coord.h"
 #include <utility>
 
 MachineDirection opposite_direction(MachineDirection direction)
@@ -16,18 +17,18 @@ MachineDirection opposite_direction(MachineDirection direction)
     }
 }
 
-std::pair<int32_t, int32_t> traverse_direction(int32_t row, int32_t column, MachineDirection direction, int32_t distance = 1)
+Coord traverse_direction(Coord source, MachineDirection direction, int32_t distance = 1)
 {
     switch (direction)
     {
     case MachineDirection::North:
-        return {row - distance, column};
+        return {source.row - distance, source.column};
     case MachineDirection::South:
-        return {row + distance, column};
+        return {source.row + distance, source.column};
     case MachineDirection::West:
-        return {row, column - distance};
+        return {source.row, source.column - distance};
     case MachineDirection::East:
-        return {row, column + distance};
+        return {source.row, source.column + distance};
     }
 }
 

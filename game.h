@@ -28,11 +28,6 @@ public:
     {
     }
 
-    int32_t count_machines_with_skill_able_to_attack_target_machine(
-        GameMachine &target,
-        MachineSkill attacking_machine_skill,
-        Player attacking_side);
-
     void make_move(Move &m);
     void make_attack(Attack &attack);
     void perform_dash_attack(Attack &attack);

@@ -7,28 +7,6 @@
 #include "attacks.h"
 #include "utils.h"
 
-int32_t Game::count_machines_with_skill_able_to_attack_target_machine(
-    GameMachine &target,
-    MachineSkill attacking_machine_skill,
-    Player attacking_side)
-{
-    int32_t total = 0;
-    for (const auto &machine_row : board.machines)
-    {
-        for (const auto &machine : machine_row)
-        {
-            if (!machine.has_value() || machine->get().machine.get().skill != attacking_machine_skill || machine->get().side != attacking_side)
-                continue;
-
-            auto attacks = calculate_attacks(*this, machine->get());
-            total += std::count_if(attacks.begin(), attacks.end(), [&target](const Attack &attack)
-                                   { return attack.attacked_row == target.row && attack.attacked_column == target.column; });
-        }
-    }
-
-    return total;
-}
-
 void Game::make_move(Move &m)
 {
     auto &machine = board.machines[m.source_row][m.source_column];
@@ -50,7 +28,7 @@ void Game::make_move(Move &m)
 
 void Game::make_attack(Attack &attack)
 {
-    switch (board.machines[attack.source_row][attack.source_column].value().get().machine.get().machine_type)
+    switch (board.machine_at(attack.source).value().get().machine.get().machine_type)
     {
     case MachineType::Dash:
         perform_dash_attack(attack);
@@ -93,7 +71,7 @@ void Game::pre_turn()
             {
                 if (!board.is_space_occupied(attack.attacked_row, attack.attacked_column))
                     continue;
-                --board.machines[attack.attacked_row][attack.attacked_column].value().get().health;
+                --board.machine_at[attack.attacked_row][attack.attacked_column].value().get().health;
             }
             break;
         }

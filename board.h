@@ -3,6 +3,7 @@
 #include <functional>
 #include "enums.h"
 #include "game_machine.h"
+#include "coord.h"
 
 class Board
 {
@@ -10,10 +11,12 @@ public:
     BoardType<Terrain> terrain;
     BoardType<std::optional<std::reference_wrapper<GameMachine>>> machines;
 
-    void unsafe_move_machine(int32_t source_row, int32_t source_column, int32_t destination_row, int32_t destination_column);
+    void unsafe_move_machine(Coord source, Coord destination);
     bool is_space_occupied(int32_t row, int32_t column) const;
     BoardIterator begin();
     BoardIterator end();
+    Terrain &terrain_at(Coord coordinates);
+    std::optional<std::reference_wrapper<GameMachine>> &machine_at(Coord coordinates);
 };
 
 class BoardIterator

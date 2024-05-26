@@ -9,53 +9,90 @@
 class Attack
 {
 public:
+    // The attack direction.
     MachineDirection attack_direction_from_source;
-    int32_t move_to_row;
-    int32_t move_to_column;
-    int32_t attacked_row;
-    int32_t attacked_column;
-    int32_t source_row;
-    int32_t source_column;
+    // The attack destination. Can point to an empty space or a machine.
+    Coord destination;
+    // The source of the attack. Always points to the attacking machine.
+    Coord source;
+    // These coordinates should always point to machines on the board.
+    std::vector<Coord> affected_machines;
 
     Attack(
         MachineDirection attack_direction_from_source,
-        int32_t move_to_row,
-        int32_t move_to_column,
-        int32_t attacked_row,
-        int32_t attacked_column,
-        int32_t source_row,
-        int32_t source_column) : attack_direction_from_source(attack_direction_from_source),
-                                 move_to_row(move_to_row),
-                                 move_to_column(move_to_column),
-                                 attacked_row(attacked_row),
-                                 attacked_column(attacked_column),
-                                 source_row(source_row),
-                                 source_column(source_column) {}
+        Coord destination,
+        Coord source) : attack_direction_from_source(attack_direction_from_source),
+                        destination(destination),
+                        source(source) {}
 };
+
+void populate_adjacent_attacks(Game &game, GameMachine &machine, MachineDirection direction, Coord source_coodinates, std::optional<Attack> &attack, std::vector<Coord> &affected_machines)
+{
+    // If we do not posses the sweep skill, stop.
+    if (machine.machine.get().skill != MachineSkill::Sweep)
+        return;
+
+    // Look to the left and right of the destination.
+    for (auto sweep_direction : {
+             rotate_direction(direction, Rotation::Clockwise),
+             rotate_direction(direction, Rotation::CounterClockwise),
+         })
+    {
+        auto sweep_destination = traverse_direction(source_coodinates, sweep_direction);
+        if (sweep_destination.out_of_bounds())
+            continue;
+
+        auto destination_machine = game.board.machine_at(sweep_destination);
+        if (destination_machine.has_value())
+        {
+            // If there is a machine to the left or right (enemy or friendly), then it is attacked as part of the main attack.
+            affected_machines.push_back(sweep_destination);
+
+            // If the machine to the left or right is an enemy, and we have not already found an enemy to attack, then this is the main attack.
+            if (!attack.has_value() && destination_machine.value().get().side != machine.side)
+            {
+                attack = Attack(
+                    direction,
+                    source_coodinates,
+                    machine.coordinates);
+            }
+        }
+    }
+}
 
 std::optional<Attack> first_machine_in_attack_range(MachineDirection direction, Game &game, GameMachine &machine)
 {
-    for (int i = 0; i < machine.machine.get().range; ++i)
+    std::vector<Coord> affected_machines;
+    std::optional<Attack> attack;
+
+    for (int i = 0; i < machine.machine.get().range && !attack.has_value(); ++i)
     {
-        auto [row, column] = traverse_direction(machine.row, machine.column, direction);
+        // Move one space in the direction.
+        auto destination = traverse_direction(machine.coordinates, direction);
 
-        if (row >= 8 || column >= 8 || row < 0 || column < 0)
-        {
+        // If the destination is out of bounds, stop.
+        if (destination.out_of_bounds())
             break;
+
+        // Is the destination occupied by an enemy machine?
+        auto destination_machine = game.board.machine_at(destination);
+        if (destination_machine.has_value() && destination_machine.value().get().side != machine.side)
+        {
+            attack = Attack(
+                direction,
+                destination,
+                machine.coordinates);
+
+            affected_machines.push_back(destination);
         }
 
-        if (game.board.machines[row][column].has_value() && game.board.machines[row][column].value().get().side != machine.side)
-        {
-            return Attack(
-                direction,
-                row,
-                column,
-                machine.row,
-                machine.column);
-        }
+        populate_adjacent_attacks(game, machine, direction, destination, attack, affected_machines);
     }
 
-    return std::nullopt;
+    if (attack.has_value())
+        attack.value().affected_machines = affected_machines;
+
+    return attack;
 }
 
 std::vector<Attack> calculate_attacks(Game &game, GameMachine &machine)
@@ -78,128 +115,60 @@ std::vector<Attack> calculate_attacks(Game &game, GameMachine &machine)
         {
             auto attack = first_machine_in_attack_range(direction, game, machine);
             if (attack.has_value())
-            {
                 attacks.push_back(attack.value());
-            }
+
             break;
         }
         case MachineType::Gunner:
         {
-            auto row = machine.row;
-            auto column = machine.column;
-            switch (direction)
-            {
-            case MachineDirection::North:
-            {
-                if (row - machine.machine.get().range < 0)
-                {
-                    continue;
-                }
+            std::vector<Coord> affected_machines;
+            std::optional<Attack> main_attack;
+            auto end_of_attack_range = traverse_direction(machine.coordinates, direction, machine.machine.get().range);
+            if (end_of_attack_range.out_of_bounds())
+                continue;
 
-                row -= machine.machine.get().range;
-                break;
-            }
-            case MachineDirection::East:
+            auto destination_machine = game.board.machine_at(end_of_attack_range);
+            if (destination_machine.has_value() && destination_machine.value().get().side != machine.side)
             {
-                if (column + machine.machine.get().range > 7)
-                {
-                    continue;
-                }
-                column += machine.machine.get().range;
-                break;
-            }
-            case MachineDirection::South:
-            {
-                if (row - machine.machine.get().range > 7)
-                {
-                    continue;
-                }
-                row += machine.machine.get().range;
-                break;
-            }
-            case MachineDirection::West:
-            {
-                if (column - machine.machine.get().range < 0)
-                {
-                    continue;
-                }
-                column -= machine.machine.get().range;
-                break;
-            }
-            }
-
-            if (game.machines[row][column].has_value() && game.machines[row][column].value().get().side != machine.side)
-            {
-                attacks.push_back(Attack(
+                main_attack = Attack(
                     direction,
-                    row,
-                    column,
-                    machine.row,
-                    machine.column));
+                    end_of_attack_range,
+                    machine.coordinates);
+
+                affected_machines.push_back(end_of_attack_range);
+            }
+
+            populate_adjacent_attacks(game, machine, direction, end_of_attack_range, main_attack, affected_machines);
+
+            if (main_attack.has_value())
+            {
+                main_attack.value().affected_machines = affected_machines;
+                attacks.push_back(main_attack.value());
             }
 
             break;
         }
         case MachineType::Dash:
         {
-            auto row = machine.row;
-            auto column = machine.column;
-            switch (direction)
-            {
-            case MachineDirection::North:
-            {
-                if (row - machine.machine.get().range < 0)
-                {
-                    continue;
-                }
-
-                row -= machine.machine.get().range;
-                break;
-            }
-            case MachineDirection::East:
-            {
-                if (column + machine.machine.get().range > 7)
-                {
-                    continue;
-                }
-                column += machine.machine.get().range;
-                break;
-            }
-            case MachineDirection::South:
-            {
-                if (row - machine.machine.get().range > 7)
-                {
-                    continue;
-                }
-                row += machine.machine.get().range;
-                break;
-            }
-            case MachineDirection::West:
-            {
-                if (column - machine.machine.get().range < 0)
-                {
-                    continue;
-                }
-                column -= machine.machine.get().range;
-                break;
-            }
-            }
+            auto end_of_attack_range = traverse_direction(machine.coordinates, direction, machine.machine.get().range);
+            if (end_of_attack_range.out_of_bounds())
+                continue;
 
             // Must be able to land on an empty space
-            if (game.machines[row][column].has_value())
-            {
+            if (game.board.machine_at(end_of_attack_range).has_value())
                 continue;
-            }
 
-            // Does there exist at least one enemy machine in the path?
-            if (first_machine_in_attack_range(direction, game, machine).has_value())
+            // Grab the attack for the first enemy in the path.
+            // Normally, to account for the sweep skill for dash machines that have an attack range greater than 2,
+            // we'd have to loop over all the spaces in the path and consider all the adjacent machines in the path.
+            // However, because there are no dash machines with the sweep skill that have an attack range greater than 2,
+            // we can just grab the first enemy in the path and it should have all the information we need.
+            auto first_enemy_in_path = first_machine_in_attack_range(direction, game, machine);
+            if (first_enemy_in_path.has_value())
             {
-                attacks.push_back(Attack(
-                    direction,
-                    row,
-                    column,
-                    machine.row,
-                    machine.column));
+                // The source and affected machines should already be what we want them to be.
+                first_enemy_in_path.value().destination = end_of_attack_range;
+                attacks.push_back(first_enemy_in_path.value());
             }
         }
         }
@@ -288,25 +257,25 @@ int32_t get_skill_combat_power_modifier_when_attacking(Game &game, GameMachine &
     switch (machine.machine.get().skill)
     {
     case MachineSkill::Gallop:
-        if (game.terrain[machine.row][machine.column] == Terrain::Grassland)
+        if (game.board.terrain_at(machine.coordinates) == Terrain::Grassland)
         {
             combat_power = 1;
         }
         break;
     case MachineSkill::Stalk:
-        if (game.terrain[machine.row][machine.column] == Terrain::Forest)
+        if (game.board.terrain_at(machine.coordinates) == Terrain::Forest)
         {
             combat_power = 1;
         }
         break;
     case MachineSkill::HighGround:
-        if (game.terrain[machine.row][machine.column] == Terrain::Mountain)
+        if (game.board.terrain_at(machine.coordinates) == Terrain::Mountain)
         {
             combat_power = 1;
         }
         break;
     case MachineSkill::Climb:
-        if (game.terrain[machine.row][machine.column] == Terrain::Hill)
+        if (game.board.terrain_at(machine.coordinates) == Terrain::Hill)
         {
             combat_power = 1;
         }
@@ -315,41 +284,22 @@ int32_t get_skill_combat_power_modifier_when_attacking(Game &game, GameMachine &
         break;
     }
 
-    // Apply any attack power gains from friendly empower machines and subtract any attack power lost from enemy blinding machines.
-    auto modifier = game.count_machines_with_skill_able_to_attack_target_machine(
-                        machine,
-                        MachineSkill::Empower,
-                        Player::Player) -
-                    game.count_machines_with_skill_able_to_attack_target_machine(
-                        machine,
-                        MachineSkill::Blind,
-                        Player::Opponent);
-
-    return combat_power + modifier;
+    return combat_power + machine.attack_power_modifier;
 }
 
 int32_t calculate_combat_power(Game &game, GameMachine &machine, Attack &attack)
 {
     // A defending machine's combat power is only the terrain it is standing on, plus any modifiers.
     // An attacking machine's combat power is the terrain it is standing on, plus any modifiers, plus its attack power.
-    int32_t combat_power = static_cast<int32_t>(game.terrain[machine.row][machine.column]);
+    int32_t combat_power = static_cast<int32_t>(game.board.terrain_at(machine.coordinates));
 
     // If the machine is a pull machine and the terrain is marsh, add 1 combat power.
-    if (machine
-            .machine.get()
-            .is_pull() &&
-        game.terrain[machine.row][machine.column] == Terrain::Marsh)
-    {
-        combat_power += 1;
-    }
+    if (machine.machine.get().is_pull() && game.board.terrain_at(machine.coordinates) == Terrain::Marsh)
+        ++combat_power;
 
     // All swoop machines get +1 combat power.
-    if (machine
-            .machine.get()
-            .is_flying())
-    {
-        combat_power += 1;
-    }
+    if (machine.machine.get().is_flying())
+        ++combat_power;
 
     if (machine.side == game.turn)
     {
@@ -361,13 +311,10 @@ int32_t calculate_combat_power(Game &game, GameMachine &machine, Attack &attack)
     {
         auto side_being_attacked = side_tangent_to_direction(attack.attack_direction_from_source, machine.direction);
         if (static_cast<int32_t>(side_being_attacked & machine.machine.get().armored_sides) != 0)
-        {
             combat_power += 1;
-        }
         else if (static_cast<int32_t>(side_being_attacked & machine.machine.get().weak_sides) != 0)
-        {
             combat_power -= 1;
-        }
+
         combat_power += get_skill_combat_power_modifier_when_defending(game, machine);
         return combat_power;
     }
