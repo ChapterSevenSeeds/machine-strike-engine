@@ -1,6 +1,6 @@
 #include "enums.h"
 #include "game.h"
-#include "attacks.h"
+#include "attack.h"
 #include "utils.h"
 
 void post_attack(GameMachine &attacker)
@@ -11,39 +11,6 @@ void post_attack(GameMachine &attacker)
         : attacker.machine_state == MachineState::Moved
             ? MachineState::MovedAndAttacked
             : MachineState::Attacked;
-}
-
-void Game::perform_dash_attack(Attack &attack)
-{
-    auto &attacker = board.machine_at(attack.source).value().get();
-    auto attacker_combat_power = calculate_combat_power(*this, attacker, attack);
-
-    // Get every machine in the attack path and apply the attack. Also rotate each machine 180 degrees.
-    auto current_row = attack.source_row;
-    auto current_column = attack.source_column;
-
-    while (current_row != attack.attacked_row && current_column != attack.attacked_column)
-    {
-        auto next = traverse_direction(current_row, current_column, attack.attack_direction_from_source);
-        current_row = next.first;
-        current_column = next.second;
-
-        if (board.machines[current_row][current_column].has_value())
-        {
-            auto &machine = board.machines[current_row][current_column].value().get();
-            auto machine_combat_power = calculate_combat_power(*this, machine, attack);
-            machine.health -= attacker_combat_power - machine_combat_power;
-            rotate_machine(machine.direction, Rotation::Clockwise, 2);
-        }
-    }
-
-    board.unsafe_move_machine(
-        attack.source_row,
-        attack.source_column,
-        attack.attacked_row,
-        attack.attacked_column);
-
-    post_attack(attacker);
 }
 
 // Returns true if the machine was knocked one space, false otherwise.
@@ -70,14 +37,22 @@ bool Game::knock_machine(GameMachine &machine, MachineDirection direction)
     return true;
 }
 
-GameMachine &perform_direct_attack_prelude(Game &game, Attack &attack)
+GameMachine &Game::pre_apply_attack(Attack &attack)
 {
-    auto &attacker = game.board.machine_at(attack.source).value().get();
-    auto attacker_combat_power = calculate_combat_power(game, attacker, attack);
+    auto &attacker = board.machine_at(attack.source).value().get();
+    auto attacker_combat_power = calculate_combat_power(attacker, attack);
+
+    apply_attack(attack, attacker, attacker_combat_power);
+
+    return attacker;
+}
+
+void Game::apply_attack(Attack &attack, GameMachine &attacker, uint32_t attacker_combat_power)
+{
     for (const auto &coord : attack.affected_machines)
     {
-        auto &defender = game.board.machine_at(coord).value().get();
-        auto defender_combat_power = calculate_combat_power(game, defender, attack);
+        auto &defender = board.machine_at(coord).value().get();
+        auto defender_combat_power = calculate_combat_power(defender, attack);
 
         // Defense break.
         if (attacker_combat_power <= defender_combat_power)
@@ -86,7 +61,7 @@ GameMachine &perform_direct_attack_prelude(Game &game, Attack &attack)
             defender.health--;
 
             if (attacker.machine.get().machine_type != MachineType::Ram) // Ram attacks only knock the machine once, even if there was a defense break.
-                game.knock_machine(defender, attack.attack_direction_from_source);
+                knock_machine(defender, attack.attack_direction_from_source);
         }
         else
         {
@@ -94,25 +69,36 @@ GameMachine &perform_direct_attack_prelude(Game &game, Attack &attack)
             defender.health -= attacker_combat_power - defender_combat_power;
         }
     }
+}
 
-    return attacker;
+void Game::perform_dash_attack(Attack &attack)
+{
+    auto &attacker = board.machine_at(attack.source).value().get();
+    auto attacker_combat_power = calculate_combat_power(attacker, attack);
+
+    // Move the attacker to the destination immediately.
+    board.unsafe_move_machine(attack.source, attack.destination);
+
+    apply_attack(attack, attacker, attacker_combat_power);
+
+    post_attack(attacker);
 }
 
 void Game::perform_gunner_attack(Attack &attack)
 {
-    auto &attacker = perform_direct_attack_prelude(*this, attack);
+    auto &attacker = pre_apply_attack(attack);
     post_attack(attacker);
 }
 
 void Game::perform_melee_attack(Attack &attack)
 {
-    auto &attacker = perform_direct_attack_prelude(*this, attack);
+    auto &attacker = pre_apply_attack(attack);
     post_attack(attacker);
 }
 
 void Game::perform_pull_attack(Attack &attack)
 {
-    auto attacker = perform_direct_attack_prelude(*this, attack);
+    auto attacker = pre_apply_attack(attack);
 
     // I don't think any pull machines should be able to attack more than one machine at a time.
     // E.G. there are no pull machines with the swoop skill. Because of this, I have no way to confirm
@@ -128,7 +114,7 @@ void Game::perform_pull_attack(Attack &attack)
 
 void Game::perform_ram_attack(Attack &attack)
 {
-    auto &attacker = perform_direct_attack_prelude(*this, attack);
+    auto &attacker = pre_apply_attack(attack);
     for (const auto &coord : attack.affected_machines)
     {
         auto &defender = board.machine_at(coord).value().get();
@@ -153,7 +139,7 @@ void Game::perform_ram_attack(Attack &attack)
 
 void Game::perform_swoop_attack(Attack &attack)
 {
-    auto attacker = perform_direct_attack_prelude(*this, attack);
+    auto attacker = pre_apply_attack(attack);
 
     // The attacker moves next to the defender along the attack path.
     auto destination = traverse_direction(attack.destination, opposite_direction(attack.attack_direction_from_source));
@@ -169,28 +155,28 @@ void Game::perform_post_attack_skills(GameMachine &attacker, GameMachine &defend
     case MachineSkill::AlterTerrain:
         --board.terrain_at(attack.source);
         for (const auto &coord : attack.affected_machines)
-            --board.terrain_at(coord);
+            ++board.terrain_at(coord);
 
         break;
     case MachineSkill::Burn:
         for (const auto &coord : attack.affected_machines)
         {
-            if (board.terrain[coord.row][coord.column] == Terrain::Forest)
-                board.terrain[coord.row][coord.column] = Terrain::Grassland;
+            if (board.terrain_at(coord) == Terrain::Forest)
+                board.terrain_at(coord) = Terrain::Grassland;
         }
         break;
     case MachineSkill::Freeze:
         for (const auto &coord : attack.affected_machines)
         {
-            if (board.terrain[coord.row][coord.column] == Terrain::Marsh)
-                board.terrain[coord.row][coord.column] = Terrain::Grassland;
+            if (board.terrain_at(coord) == Terrain::Marsh)
+                board.terrain_at(coord) = Terrain::Grassland;
         }
         break;
     case MachineSkill::Growth:
         for (const auto &coord : attack.affected_machines)
         {
-            if (board.terrain[coord.row][coord.column] == Terrain::Grassland)
-                board.terrain[coord.row][coord.column] = Terrain::Forest;
+            if (board.terrain_at(coord) == Terrain::Grassland)
+                board.terrain_at(coord) = Terrain::Forest;
         }
         break;
     }

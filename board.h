@@ -1,3 +1,5 @@
+#pragma once
+
 #include "types.h"
 #include <optional>
 #include <functional>
@@ -5,14 +7,17 @@
 #include "game_machine.h"
 #include "coord.h"
 
+class BoardIterator;
+
 class Board
 {
 public:
     BoardType<Terrain> terrain;
     BoardType<std::optional<std::reference_wrapper<GameMachine>>> machines;
 
+    Board(BoardType<Terrain> terrain, BoardType<std::optional<std::reference_wrapper<GameMachine>>> machines);
     void unsafe_move_machine(Coord source, Coord destination);
-    bool is_space_occupied(int32_t row, int32_t column) const;
+    bool is_space_occupied(Coord coord);
     BoardIterator begin();
     BoardIterator end();
     Terrain &terrain_at(Coord coordinates);
@@ -21,18 +26,17 @@ public:
 
 class BoardIterator
 {
-    int row = 0;
-    int column = 0;
+    Coord coord;
     Board *board;
 
 public:
-    BoardIterator(Board *board, int start_row = 0, int start_column = 0) : board(board), row(start_row), column(start_column) {}
+    BoardIterator(Board *board, Coord start_coords = {0, 0}) : board(board), coord(start_coords) {}
 
     std::optional<std::reference_wrapper<GameMachine>> operator*()
     {
-        if (board->machines[row][column].has_value())
+        if (board->machines[coord].has_value())
         {
-            return board->machines[row][column].value();
+            return board->machines[coord].value();
         }
         return std::nullopt;
     }
@@ -41,19 +45,19 @@ public:
     {
         do
         {
-            column++;
-            if (column >= 8)
+            coord.column++;
+            if (coord.column >= 8)
             {
-                column = 0;
-                row++;
+                coord.column = 0;
+                coord.row++;
             }
-        } while (!board->is_space_occupied(row, column));
+        } while (!board->is_space_occupied(coord) && !coord.out_of_bounds());
         return *this;
     }
 
     bool operator==(const BoardIterator &other)
     {
-        return row == other.row && column == other.column;
+        return coord.row == other.coord.row && coord.column == other.coord.column;
     }
 
     bool operator!=(const BoardIterator &other)

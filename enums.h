@@ -188,3 +188,10 @@ enum class Rotation
     Clockwise,
     CounterClockwise,
 };
+
+enum class SpotState
+{
+    Empty,
+    Occupied,
+    BlockedOrRedundant
+};

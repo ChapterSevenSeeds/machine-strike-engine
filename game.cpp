@@ -1,29 +1,29 @@
 #include <algorithm>
 #include <cstdint>
-#include "moves.h"
+#include "move.h"
 #include "game_machine.h"
 #include "game.h"
-#include "enums.h"
-#include "attacks.h"
+#include "attack.h"
 #include "utils.h"
 
 void Game::make_move(Move &m)
 {
-    auto &machine = board.machines[m.source_row][m.source_column];
-    if (m.requires_sprint)
-    {
-        machine.value().get().machine_state = MachineState::Sprinted;
-    }
+    auto &machine = board.machine_at(m.source).value().get();
+    if (machine.machine_state == MachineState::Sprinted || machine.machine_state == MachineState::Moved || machine.machine_state == MachineState::MovedAndAttacked)
+        machine.machine_state = MachineState::Overcharged;
     else
     {
-        machine.value().get().machine_state = MachineState::Moved;
+        if (m.requires_sprint)
+        {
+            machine.machine_state = MachineState::Sprinted;
+        }
+        else
+        {
+            machine.machine_state = MachineState::Moved;
+        }
     }
 
-    board.unsafe_move_machine(
-        m.source_row,
-        m.source_column,
-        m.destination_row,
-        m.destination_column);
+    board.unsafe_move_machine(m.source, m.destination);
 }
 
 void Game::make_attack(Attack &attack)
@@ -55,58 +55,60 @@ void Game::pre_turn()
 {
     for (const auto &machine : board)
     {
-        machine.value().get().attack_power_modifier = 0;
-
-        if (!machine.has_value())
-            continue;
-
         auto &machine_ref = machine.value().get();
+        machine_ref.attack_power_modifier = 0;
 
         switch (machine_ref.machine.get().skill)
         {
         case MachineSkill::Spray:
         {
-            auto attacks = calculate_attacks(*this, machine_ref);
-            for (const auto &attack : attacks)
+            for (const auto &other_machine : board)
             {
-                if (!board.is_space_occupied(attack.attacked_row, attack.attacked_column))
+                auto &other_machine_ref = other_machine.value().get();
+                if (&machine_ref == &other_machine_ref)
                     continue;
-                --board.machine_at[attack.attacked_row][attack.attacked_column].value().get().health;
+
+                if (is_in_attack_range(machine_ref, other_machine_ref))
+                    --other_machine_ref.health;
             }
             break;
         }
         case MachineSkill::Whiplash:
         {
-            auto attacks = calculate_attacks(*this, machine_ref);
-            for (const auto &attack : attacks)
+            for (const auto &other_machine : board)
             {
-                if (!board.is_space_occupied(attack.attacked_row, attack.attacked_column))
+                auto &other_machine_ref = other_machine.value().get();
+                if (&machine_ref == &other_machine_ref)
                     continue;
-                board.machines[attack.attacked_row][attack.attacked_column].value().get().direction = opposite_direction(board.machines[attack.attacked_row][attack.attacked_column].value().get().direction);
+
+                if (is_in_attack_range(machine_ref, other_machine_ref))
+                    other_machine_ref.direction = opposite_direction(other_machine_ref.direction);
             }
             break;
         }
         case MachineSkill::Empower:
         {
-            auto attacks = calculate_attacks(*this, machine_ref);
-            for (const auto &attack : attacks)
+            for (const auto &other_machine : board)
             {
-                if (!board.is_space_occupied(attack.attacked_row, attack.attacked_column) || board.machines[attack.attacked_row][attack.attacked_column].value().get().side != machine_ref.side)
+                auto &other_machine_ref = other_machine.value().get();
+                if (&machine_ref == &other_machine_ref || other_machine_ref.side != machine_ref.side)
                     continue;
 
-                ++board.machines[attack.attacked_row][attack.attacked_column].value().get().attack_power_modifier;
+                if (is_in_attack_range(machine_ref, other_machine_ref))
+                    ++other_machine_ref.attack_power_modifier;
             }
             break;
         }
         case MachineSkill::Blind:
         {
-            auto attacks = calculate_attacks(*this, machine_ref);
-            for (const auto &attack : attacks)
+            for (const auto &other_machine : board)
             {
-                if (!board.is_space_occupied(attack.attacked_row, attack.attacked_column) || board.machines[attack.attacked_row][attack.attacked_column].value().get().side == machine_ref.side)
+                auto &other_machine_ref = other_machine.value().get();
+                if (&machine_ref == &other_machine_ref || other_machine_ref.side == machine_ref.side)
                     continue;
 
-                --board.machines[attack.attacked_row][attack.attacked_column].value().get().attack_power_modifier;
+                if (is_in_attack_range(machine_ref, other_machine_ref))
+                    --other_machine_ref.attack_power_modifier;
             }
             break;
         }

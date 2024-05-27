@@ -1,12 +1,12 @@
 #include "machine.h"
 #include "enums.h"
 
-bool inline Machine::is_flying() const
+bool Machine::is_flying() const
 {
     return machine_type == MachineType::Swoop;
 }
 
-bool inline Machine::is_pull() const
+bool Machine::is_pull() const
 {
     return machine_type == MachineType::Pull;
 }
