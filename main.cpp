@@ -127,8 +127,7 @@ int main() {
         Player::Player
     );
 
-    auto attacks = game.calculate_attacks(game_machine);
-    print_attacks(attacks);
+    print_board(game);
 }
 
 
