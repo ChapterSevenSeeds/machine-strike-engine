@@ -66,7 +66,7 @@ const static Machine BURROWER(
     1);
 
 const static Machine TRACKERBURROWER(
-    "Tracker Burrower",
+    "TrackerBurrower",
     MachineType::Melee,
     MachineSkill::AlterTerrain,
     4,
@@ -114,7 +114,7 @@ const static Machine CLAWSTRIDER(
     3);
 
 const static Machine ELEMENTALCLAWSTRIDER(
-    "Elemental Clawstrider",
+    "ElementalClawstrider",
     MachineType::Gunner,
     MachineSkill::Burn,
     8,
@@ -126,7 +126,7 @@ const static Machine ELEMENTALCLAWSTRIDER(
     4);
 
 const static Machine APEXCLAWSTRIDER(
-    "Apex Clawstrider",
+    "ApexClawstrider",
     MachineType::Melee,
     MachineSkill::Retaliate,
     8,
@@ -270,7 +270,7 @@ const static Machine RAVAGER(
     4);
 
 const static Machine REDEYEWATCHER(
-    "Redeye Watcher",
+    "RedeyeWatcher",
     MachineType::Gunner,
     MachineSkill::Blind,
     5,
