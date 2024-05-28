@@ -16,12 +16,13 @@ public:
     BoardType<std::optional<std::reference_wrapper<GameMachine>>> machines;
 
     Board(BoardType<Terrain> terrain, BoardType<std::optional<std::reference_wrapper<GameMachine>>> machines);
-    void unsafe_move_machine(Coord source, Coord destination);
+    void move_machine(Coord source, Coord destination);
     bool is_space_occupied(Coord coord);
     BoardIterator begin();
     BoardIterator end();
     Terrain &terrain_at(Coord coordinates);
     std::optional<std::reference_wrapper<GameMachine>> &machine_at(Coord coordinates);
+    void clear_spot(Coord coord);
 };
 
 class BoardIterator

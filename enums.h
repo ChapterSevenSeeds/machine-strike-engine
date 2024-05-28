@@ -32,7 +32,7 @@ inline std::string to_string(Terrain terrain)
     }
 }
 
-inline Terrain operator++(Terrain& terrain)
+inline Terrain operator++(Terrain &terrain)
 {
     auto value = static_cast<int>(terrain) + 1;
     if (value > static_cast<int>(Terrain::Mountain))
@@ -40,7 +40,7 @@ inline Terrain operator++(Terrain& terrain)
     return terrain = static_cast<Terrain>(value);
 }
 
-inline Terrain operator--(Terrain& terrain)
+inline Terrain operator--(Terrain &terrain)
 {
     auto value = static_cast<int>(terrain) - 1;
     if (value < static_cast<int>(Terrain::Chasm))
@@ -194,4 +194,11 @@ enum class SpotState
     Empty,
     Occupied,
     BlockedOrRedundant
+};
+
+enum class Winner
+{
+    Player,
+    Opponent,
+    None
 };

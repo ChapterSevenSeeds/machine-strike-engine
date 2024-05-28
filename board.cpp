@@ -3,8 +3,11 @@
 
 Board::Board(BoardType<Terrain> terrain, BoardType<std::optional<std::reference_wrapper<GameMachine>>> machines) : terrain(terrain), machines(machines) {}
 
-void Board::unsafe_move_machine(Coord source, Coord destination)
+void Board::move_machine(Coord source, Coord destination)
 {
+    if (!machines[source].has_value() || machines[destination].has_value())
+        return;
+
     machines[destination] = machines[source];
     machines[source] = std::nullopt;
     machines[destination].value().get().coordinates = destination;
@@ -33,4 +36,9 @@ Terrain &Board::terrain_at(Coord coordinates)
 std::optional<std::reference_wrapper<GameMachine>> &Board::machine_at(Coord coordinates)
 {
     return machines[coordinates];
+}
+
+void Board::clear_spot(Coord coord)
+{
+    machines[coord] = std::nullopt;
 }

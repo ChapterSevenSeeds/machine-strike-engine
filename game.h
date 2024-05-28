@@ -13,21 +13,20 @@
 class Game
 {
 public:
-    std::vector<std::reference_wrapper<const Machine>> opponent_starting_pieces;
-    std::vector<std::reference_wrapper<const Machine>> player_starting_pieces;
     Board board;
     Player turn;
+    int player_victory_points = 0;
+    int opponent_victory_points = 0;
 
     Game(
-        std::vector<std::reference_wrapper<const Machine>> opponent_starting_pieces,
-        std::vector<std::reference_wrapper<const Machine>> player_starting_pieces,
         Board board,
-        Player turn) : opponent_starting_pieces(opponent_starting_pieces),
-                       player_starting_pieces(player_starting_pieces),
-                       board(board),
+        Player turn) : board(board),
                        turn(turn)
     {
     }
+
+    // Debug
+    void print_board(std::optional<std::reference_wrapper<GameMachine>> focus_machine = std::nullopt, std::optional<std::vector<Move>> moves = std::nullopt, std::optional<std::vector<Attack>> attacks = std::nullopt);
 
     // Gameplay
     void make_move(Move &m);
@@ -43,6 +42,8 @@ public:
     void pre_turn();
     void apply_attack(Attack &attack, GameMachine &attacker, uint32_t attacker_combat_power);
     GameMachine &pre_apply_attack(Attack &attack);
+    void modify_machine_health(GameMachine &machine, int32_t health_change);
+    Winner check_winner();
 
     // Attack generation
     void populate_adjacent_attacks(GameMachine &machine, MachineDirection direction, Coord source_coodinates, std::optional<Attack> &attack, std::vector<Coord> &affected_machines);
@@ -50,7 +51,7 @@ public:
     std::vector<Attack> calculate_attacks(GameMachine &machine);
     int32_t get_skill_combat_power_modifier_when_defending(GameMachine &machine);
     int32_t get_skill_combat_power_modifier_when_attacking(GameMachine &machine);
-    int32_t calculate_combat_power(GameMachine &machine, Attack &attack);
+    int32_t calculate_combat_power(GameMachine &machine, std::optional<MachineDirection> attack_direction);
     bool is_in_attack_range(GameMachine &attacker, GameMachine &defender);
 
     // Move generation

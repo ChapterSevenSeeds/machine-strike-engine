@@ -39,6 +39,13 @@ void Game::populate_adjacent_attacks(GameMachine &machine, MachineDirection dire
             }
         }
     }
+
+    // If there is a machine right at the destination, then the only way we could have gotten here
+    // is if the machine at the destination is a friendly. Since we have the sweep skill, the friendly must be attacked too 😭.
+    if (attack.has_value() && board.machine_at(source_coodinates).has_value())
+    {
+        affected_machines.push_back(source_coodinates);
+    }
 }
 
 std::optional<Attack> Game::first_machine_in_attack_range(MachineDirection direction, GameMachine &machine)
@@ -79,6 +86,9 @@ std::optional<Attack> Game::first_machine_in_attack_range(MachineDirection direc
 std::vector<Attack> Game::calculate_attacks(GameMachine &machine)
 {
     std::vector<Attack> attacks;
+
+    if (machine.machine_state == MachineState::Overcharged)
+        return attacks;
 
     for (auto direction : {
              MachineDirection::North,
@@ -197,7 +207,8 @@ int32_t Game::get_skill_combat_power_modifier_when_attacking(GameMachine &machin
     return combat_power + machine.attack_power_modifier;
 }
 
-int32_t Game::calculate_combat_power(GameMachine &machine, Attack &attack)
+// If the second argument is std::nullopt, then a machine's armor will be ignored from the calculation (should only be used for printing the board).
+int32_t Game::calculate_combat_power(GameMachine &machine, std::optional<MachineDirection> attack_direction)
 {
     // A defending machine's combat power is only the terrain it is standing on, plus any modifiers.
     // An attacking machine's combat power is the terrain it is standing on, plus any modifiers, plus its attack power.
@@ -219,11 +230,14 @@ int32_t Game::calculate_combat_power(GameMachine &machine, Attack &attack)
     }
     else
     {
-        auto side_being_attacked = side_tangent_to_direction(attack.attack_direction_from_source, machine.direction);
-        if (static_cast<int32_t>(side_being_attacked & machine.machine.get().armored_sides) != 0)
-            combat_power += 1;
-        else if (static_cast<int32_t>(side_being_attacked & machine.machine.get().weak_sides) != 0)
-            combat_power -= 1;
+        if (attack_direction.has_value())
+        {
+            auto side_being_attacked = side_tangent_to_direction(attack_direction.value(), machine.direction);
+            if (static_cast<int32_t>(side_being_attacked & machine.machine.get().armored_sides) != 0)
+                combat_power += 1;
+            else if (static_cast<int32_t>(side_being_attacked & machine.machine.get().weak_sides) != 0)
+                combat_power -= 1;
+        }
 
         combat_power += get_skill_combat_power_modifier_when_defending(machine);
         return combat_power;

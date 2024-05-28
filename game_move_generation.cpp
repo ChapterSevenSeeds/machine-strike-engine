@@ -72,6 +72,9 @@ std::vector<Move> Game::expand_moves(int32_t distance_travelled, Coord coord, Ga
 
 std::vector<Move> Game::calculate_moves(GameMachine &machine)
 {
+    if (machine.machine_state == MachineState::Overcharged)
+        return std::vector<Move>{};
+        
     BoardType<bool> visited{false};
     std::vector<Move> all_moves = expand_moves(1, machine.coordinates, machine, visited);
 

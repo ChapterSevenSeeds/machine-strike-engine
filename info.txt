@@ -1,0 +1,17 @@
+- 1. Damage is applied to attack before anything else
+- 2. Knocks happen afterwards. What happens if a defense break happens with a ram or pull machine? For a pull machine, the knockback happens first, then the pull, resulting in the machine ending up where it started.
+- 3. Does a defense break with a ram machine move the defender two spaces? A ram machine moving a machine back qualifies as a knockback, meaning the defender only moves one space backwards.
+- 4. Terrain alteration skills change the terrain(s) before any movement happens (but after damage is applied).
+- 5. Does empower apply to machines that move out of range of the empowering machine? It applies to machines in the attack range of the empowering machine for the entire turn, even if they move out of range of the empowering machine. 
+- 6. How does sweep work? Machines perpendicular to the defender appear as attackable targets when calculating valid attacks. Multiple defense breaks are possible (across different machines, not multiple times for the same machine). Can attack friendly machines too but not when calculating valid attacks.
+- 7. Pieces can move over other pieces on the board.
+- 8. When attacking friendly machines, take the combat power of the defending friendly machine and subtract the base (unmodified) combat power of the attacker (don't go negative). Then treat the attack like normal except that defense breaks don't happen. Is this correct?
+- 9. Does retaliate happen before or after either the attacker or defender is moved? After. That and the defender always rotates towards the attacker, regardless if the attacker is in attack range.
+- 10. Do any terrain modifications apply to all spaces affected by the sweep skill? This is impossible because terrain modifications are always part of a skill. A machine cannot have two skills.
+- 11. Does the sweep skill damage all machines in the path of a dash attacker? This is irrelevant because there are no dash machines with the sweep skill that have an attack range greater than 2, meaning all dash machines with the sweep skill can only ever damage at the very most 3 machines at the same time. See number 13.
+- 12. Can machines that attack the first machine in their attack range use the sweep skill to attack perpendicular machines not in their direct line of sight? Yes. If the machine has the sweep skill and must attack the first machine in their attack range, enemy machines perpendicular to the line of sight are considered to be the first machines in the attack range. 
+- 13. The sweep skill attacks all machines perpendicular to the line of sight for the attack. For example, if a machine must attack the first machine in the attack range and this machine has the sweep skill, and there is a friendly machine perpendicular to the attack direction, the friendly machine will get attacked along with the enemy machines.
+- 14. With a dash attack that modifies terrain, which terrain gets modified? The spots where machines were damaged.
+15. Can machines be rotated at any point during your turn?
+16. Is there any benefit to rotating machines not at the very end of your turn? I don't think it does because damage only comes into play when you are defending (which never happens unless a sweep skill causes damage to a friendly?)
+17. If the sweep skill damages a friendly, does that friendly's armor come into play at all?

@@ -3,16 +3,6 @@
 #include "attack.h"
 #include "utils.h"
 
-void post_attack(GameMachine &attacker)
-{
-    attacker.machine_state =
-        attacker.machine_state == MachineState::Attacked || attacker.machine_state == MachineState::MovedAndAttacked
-            ? MachineState::Overcharged
-        : attacker.machine_state == MachineState::Moved
-            ? MachineState::MovedAndAttacked
-            : MachineState::Attacked;
-}
-
 // Returns true if the machine was knocked one space, false otherwise.
 bool Game::knock_machine(GameMachine &machine, MachineDirection direction)
 {
@@ -20,27 +10,27 @@ bool Game::knock_machine(GameMachine &machine, MachineDirection direction)
     if (moved_to.out_of_bounds())
     {
         // The machine is knocked into the wall and loses 1 health.
-        --machine.health;
+        modify_machine_health(machine, -1);
         return false;
     }
 
     if (board.machine_at(moved_to).has_value())
     {
-        // The machine is knocked into another machine and loses 1 health.
-        --machine.health;
-        --board.machine_at(moved_to).value().get().health;
+        // The machine is knocked into another machine and both lose 1 health.
+        modify_machine_health(machine, -1);
+        modify_machine_health(board.machine_at(moved_to).value(), -1);
         return false;
     }
 
     // The machine is knocked back one space.
-    board.unsafe_move_machine(machine.coordinates, moved_to);
+    board.move_machine(machine.coordinates, moved_to);
     return true;
 }
 
 GameMachine &Game::pre_apply_attack(Attack &attack)
 {
     auto &attacker = board.machine_at(attack.source).value().get();
-    auto attacker_combat_power = calculate_combat_power(attacker, attack);
+    auto attacker_combat_power = calculate_combat_power(attacker, attack.attack_direction_from_source);
 
     apply_attack(attack, attacker, attacker_combat_power);
 
@@ -51,22 +41,35 @@ void Game::apply_attack(Attack &attack, GameMachine &attacker, uint32_t attacker
 {
     for (const auto &coord : attack.affected_machines)
     {
+        if (!attacker.is_alive())
+            return;
+
         auto &defender = board.machine_at(coord).value().get();
-        auto defender_combat_power = calculate_combat_power(defender, attack);
+        auto defender_combat_power = calculate_combat_power(defender, attack.attack_direction_from_source);
 
-        // Defense break.
-        if (attacker_combat_power <= defender_combat_power)
+        if (defender.side == attacker.side)
         {
-            attacker.health--;
-            defender.health--;
-
-            if (attacker.machine.get().machine_type != MachineType::Ram) // Ram attacks only knock the machine once, even if there was a defense break.
-                knock_machine(defender, attack.attack_direction_from_source);
+            // This is only possible with the sweep skill.
+            // TODO check if armored sides have anything to do with this.
+            auto resulting_defender_combat_power = std::max(defender_combat_power - attacker.machine.get().attack, 0);
+            modify_machine_health(defender, -(attacker_combat_power - resulting_defender_combat_power));
         }
         else
         {
-            // Apply the attack
-            defender.health -= attacker_combat_power - defender_combat_power;
+            // Defense break.
+            if (attacker_combat_power <= defender_combat_power)
+            {
+                modify_machine_health(attacker, -1);
+                modify_machine_health(defender, -1);
+
+                if (attacker.machine.get().machine_type != MachineType::Ram) // Ram attacks only knock the machine once, even if there was a defense break.
+                    knock_machine(defender, attack.attack_direction_from_source);
+            }
+            else
+            {
+                // Apply the attack
+                modify_machine_health(defender, -(attacker_combat_power - defender_combat_power));
+            }
         }
     }
 }
@@ -74,31 +77,27 @@ void Game::apply_attack(Attack &attack, GameMachine &attacker, uint32_t attacker
 void Game::perform_dash_attack(Attack &attack)
 {
     auto &attacker = board.machine_at(attack.source).value().get();
-    auto attacker_combat_power = calculate_combat_power(attacker, attack);
+    auto attacker_combat_power = calculate_combat_power(attacker, attack.attack_direction_from_source);
 
     // Move the attacker to the destination immediately.
-    board.unsafe_move_machine(attack.source, attack.destination);
+    board.move_machine(attack.source, attack.destination);
 
     apply_attack(attack, attacker, attacker_combat_power);
-
-    post_attack(attacker);
 }
 
 void Game::perform_gunner_attack(Attack &attack)
 {
-    auto &attacker = pre_apply_attack(attack);
-    post_attack(attacker);
+    pre_apply_attack(attack);
 }
 
 void Game::perform_melee_attack(Attack &attack)
 {
-    auto &attacker = pre_apply_attack(attack);
-    post_attack(attacker);
+    pre_apply_attack(attack);
 }
 
 void Game::perform_pull_attack(Attack &attack)
 {
-    auto attacker = pre_apply_attack(attack);
+    pre_apply_attack(attack);
 
     // I don't think any pull machines should be able to attack more than one machine at a time.
     // E.G. there are no pull machines with the swoop skill. Because of this, I have no way to confirm
@@ -108,13 +107,11 @@ void Game::perform_pull_attack(Attack &attack)
         auto &defender = board.machine_at(coord).value().get();
         knock_machine(defender, opposite_direction(attack.attack_direction_from_source));
     }
-
-    post_attack(attacker);
 }
 
 void Game::perform_ram_attack(Attack &attack)
 {
-    auto &attacker = pre_apply_attack(attack);
+    pre_apply_attack(attack);
     for (const auto &coord : attack.affected_machines)
     {
         auto &defender = board.machine_at(coord).value().get();
@@ -125,27 +122,23 @@ void Game::perform_ram_attack(Attack &attack)
     if (!board.machine_at(attack.destination).has_value())
     {
         // The machine takes the spot of the machine that was knocked along the attack path.
-        board.unsafe_move_machine(attack.source, attack.destination);
+        board.move_machine(attack.source, attack.destination);
     }
     else
     {
         // The machine is moved to space next to the machine that was attacked.
         auto fallback_coord = traverse_direction(attack.destination, opposite_direction(attack.attack_direction_from_source));
-        board.unsafe_move_machine(attack.source, fallback_coord);
+        board.move_machine(attack.source, fallback_coord);
     }
-
-    post_attack(attacker);
 }
 
 void Game::perform_swoop_attack(Attack &attack)
 {
-    auto attacker = pre_apply_attack(attack);
+    pre_apply_attack(attack);
 
     // The attacker moves next to the defender along the attack path.
     auto destination = traverse_direction(attack.destination, opposite_direction(attack.attack_direction_from_source));
-    board.unsafe_move_machine(attack.source, destination);
-
-    post_attack(attacker);
+    board.move_machine(attack.source, destination);
 }
 
 void Game::perform_post_attack_skills(GameMachine &attacker, GameMachine &defender, Attack &attack)
