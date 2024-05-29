@@ -2,7 +2,9 @@
 
 #include "types.h"
 #include <optional>
+#include <vector>
 #include <functional>
+#include <memory>
 #include "enums.h"
 #include "game_machine.h"
 #include "coord.h"
@@ -13,15 +15,15 @@ class Board
 {
 public:
     BoardType<Terrain> terrain;
-    BoardType<std::optional<std::reference_wrapper<GameMachine>>> machines;
+    BoardType<std::optional<GameMachine>> machines;
 
-    Board(BoardType<Terrain> terrain, BoardType<std::optional<std::reference_wrapper<GameMachine>>> machines);
+    Board(BoardType<Terrain> terrain, BoardType<std::optional<GameMachine>> machines);
     void move_machine(Coord source, Coord destination);
     bool is_space_occupied(Coord coord);
     BoardIterator begin();
     BoardIterator end();
     Terrain &terrain_at(Coord coordinates);
-    std::optional<std::reference_wrapper<GameMachine>> &machine_at(Coord coordinates);
+    std::optional<GameMachine> &machine_at(Coord coordinates);
     void clear_spot(Coord coord);
 };
 
@@ -33,13 +35,9 @@ class BoardIterator
 public:
     BoardIterator(Board *board, Coord start_coords = {0, 0}) : board(board), coord(start_coords) {}
 
-    std::optional<std::reference_wrapper<GameMachine>> operator*()
+    std::optional<GameMachine> &operator*()
     {
-        if (board->machines[coord].has_value())
-        {
-            return board->machines[coord].value();
-        }
-        return std::nullopt;
+        return board->machines[coord];
     }
 
     BoardIterator &operator++()

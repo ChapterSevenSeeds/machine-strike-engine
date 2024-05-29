@@ -26,7 +26,7 @@ public:
     }
 
     // Debug
-    void print_board(std::optional<std::reference_wrapper<GameMachine>> focus_machine = std::nullopt, std::optional<std::vector<Move>> moves = std::nullopt, std::optional<std::vector<Attack>> attacks = std::nullopt);
+    void print_board(std::optional<GameMachine> &focus_machine = std::nullopt, std::optional<std::vector<Move>> moves = std::nullopt, std::optional<std::vector<Attack>> attacks = std::nullopt);
 
     // Gameplay
     void make_move(Move &m);

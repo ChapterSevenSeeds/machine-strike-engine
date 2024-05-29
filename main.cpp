@@ -9,6 +9,7 @@
 #include "enums.h"
 #include "types.h"
 #include "coord.h"
+#include "string_utils.h"
 #include "game.h"
 #include "game_machine.h"
 #include "machine_definitions.h"
@@ -49,20 +50,22 @@ BoardType<Terrain> parse_terrain(std::string &str)
     return terrain;
 }
 
-BoardType<std::optional<std::reference_wrapper<GameMachine>>> parse_machines(std::string str, Player player)
+BoardType<std::optional<GameMachine>> parse_machines(std::string str, Player player)
 {
-    BoardType<std::optional<std::reference_wrapper<GameMachine>>> machines;
+    BoardType<std::optional<GameMachine>> machines;
+
+    auto machine_names = split(str, ',');
+
+    if (machine_names.size() != 64)
+    {
+        throw std::runtime_error("Invalid machine string");
+    }
+
     for (int i = 0; i < 8; i++)
     {
         for (int j = 0; j < 8; j++)
         {
-            auto index_of_comma = str.find_first_of(",");
-            if (index_of_comma == std::string::npos)
-            {
-                throw std::runtime_error("Invalid machine string");
-            }
-
-            auto machine_name = str.substr(0, index_of_comma);
+            auto machine_name = machine_names[i * 8 + j];
 
             if (machine_name.empty())
             {
@@ -70,25 +73,22 @@ BoardType<std::optional<std::reference_wrapper<GameMachine>>> parse_machines(std
                 continue;
             }
 
-            str = str.substr(index_of_comma + 1);
-
-            auto machine = std::find_if(ALL_MACHINES.begin(), ALL_MACHINES.end(), [&machine_name](const Machine &m)
-                                        { return std::tolower(std::string(m.name), std::locale{}) == std::tolower(machine_name, std::locale{}); });
+            auto machine = std::find_if(ALL_MACHINES.begin(), ALL_MACHINES.end(), [&machine_name](const std::reference_wrapper<const Machine> &m)
+                                        { return std::string(m.get().name) == machine_name; });
 
             if (machine == ALL_MACHINES.end())
                 throw std::runtime_error("Invalid machine name" + machine_name);
 
-            static GameMachine game_machine(std::ref(*machine), player == Player::Player ? MachineDirection::North : MachineDirection::South, {i, j}, MachineState::Ready, player);
-            machines[{i, j}] = std::ref(game_machine);
+            machines[{i, j}] = GameMachine(std::ref(*machine), player == Player::Player ? MachineDirection::North : MachineDirection::South, {i, j}, MachineState::Ready, player);
         }
     }
 
     return machines;
 }
 
-BoardType<std::optional<std::reference_wrapper<GameMachine>>> combine(BoardType<std::optional<std::reference_wrapper<GameMachine>>> &a, BoardType<std::optional<std::reference_wrapper<GameMachine>>> &b)
+BoardType<std::optional<GameMachine>> combine(BoardType<std::optional<GameMachine>> &a, BoardType<std::optional<GameMachine>> &b)
 {
-    BoardType<std::optional<std::reference_wrapper<GameMachine>>> combined;
+    BoardType<std::optional<GameMachine>> combined;
     for (int i = 0; i < 8; i++)
     {
         for (int j = 0; j < 8; j++)
@@ -118,12 +118,22 @@ int main()
     while (true)
     {
         std::string input;
-        std::cin >> input;
+        std::getline(std::cin, input);
 
-        if (input == "newgame")
+        auto tokens = split(input, ' ');
+
+        if (tokens[0] == "newgame")
         {
-            std::string terrain_str, player_machines_str, opponent_machines_str, first;
-            std::cin >> terrain_str >> player_machines_str >> opponent_machines_str >> first;
+            if (tokens.size() != 5)
+            {
+                std::cout << "Invalid newgame command" << std::endl;
+                continue;
+            }
+
+            auto terrain_str = tokens[1];
+            auto player_machines_str = tokens[2];
+            auto opponent_machines_str = tokens[3];
+            auto first = tokens[4];
 
             auto terrain = parse_terrain(terrain_str);
             auto player_machines = parse_machines(player_machines_str, Player::Player);
@@ -151,7 +161,7 @@ int main()
                 std::cout << "No machine at that location" << std::endl;
                 continue;
             }
-            auto moves = game->calculate_moves(machine.value().get());
+            auto moves = game->calculate_moves(machine.value());
             game->print_board(machine, moves);
         }
         else if (input == "print")
@@ -170,7 +180,7 @@ int main()
                 continue;
             }
 
-            auto attacks = game->calculate_attacks(machine.value().get());
+            auto attacks = game->calculate_attacks(machine.value());
             game->print_board(machine, std::nullopt, attacks);
         }
         else if (input == "attack")
@@ -210,7 +220,7 @@ int main()
                 continue;
             }
 
-            auto attacks = game->calculate_attacks(machine.value().get());
+            auto attacks = game->calculate_attacks(machine.value());
 
             auto attack = std::find_if(attacks.begin(), attacks.end(), [&attack_direction, &direction](const Attack &a)
                                        { return a.attack_direction_from_source == direction; });
@@ -236,7 +246,7 @@ int main()
                 continue;
             }
 
-            auto moves = game->calculate_moves(machine.value().get());
+            auto moves = game->calculate_moves(machine.value());
             auto move = std::find_if(moves.begin(), moves.end(), [&destination_row, &destination_column](const Move &m)
                                      { return m.destination == Coord{destination_row, destination_column}; });
 

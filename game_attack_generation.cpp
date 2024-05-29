@@ -30,7 +30,7 @@ void Game::populate_adjacent_attacks(GameMachine &machine, MachineDirection dire
             affected_machines.push_back(sweep_destination);
 
             // If the machine to the left or right is an enemy, and we have not already found an enemy to attack, then this is the main attack.
-            if (!attack.has_value() && destination_machine.value().get().side != machine.side)
+            if (!attack.has_value() && destination_machine.value().side != machine.side)
             {
                 attack = Attack(
                     direction,
@@ -64,7 +64,7 @@ std::optional<Attack> Game::first_machine_in_attack_range(MachineDirection direc
 
         // Is the destination occupied by an enemy machine?
         auto destination_machine = board.machine_at(destination);
-        if (destination_machine.has_value() && destination_machine.value().get().side != machine.side)
+        if (destination_machine.has_value() && destination_machine.value().side != machine.side)
         {
             attack = Attack(
                 direction,
@@ -119,7 +119,7 @@ std::vector<Attack> Game::calculate_attacks(GameMachine &machine)
                 continue;
 
             auto destination_machine = board.machine_at(end_of_attack_range);
-            if (destination_machine.has_value() && destination_machine.value().get().side != machine.side)
+            if (destination_machine.has_value() && destination_machine.value().side != machine.side)
             {
                 main_attack = Attack(
                     direction,

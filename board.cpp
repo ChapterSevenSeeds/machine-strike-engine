@@ -1,16 +1,17 @@
 #include <optional>
+#include <memory>
 #include "board.h"
 
-Board::Board(BoardType<Terrain> terrain, BoardType<std::optional<std::reference_wrapper<GameMachine>>> machines) : terrain(terrain), machines(machines) {}
+Board::Board(BoardType<Terrain> terrain, BoardType<std::optional<GameMachine>> machines) : terrain(terrain), machines(machines) {}
 
 void Board::move_machine(Coord source, Coord destination)
 {
     if (!machines[source].has_value() || machines[destination].has_value())
         return;
 
-    machines[destination] = machines[source];
+    machines[destination] = std::move(machines[source]);
     machines[source] = std::nullopt;
-    machines[destination].value().get().coordinates = destination;
+    machines[destination].value().coordinates = destination;
 }
 
 bool Board::is_space_occupied(Coord coord)
@@ -33,7 +34,7 @@ Terrain &Board::terrain_at(Coord coordinates)
     return terrain[coordinates];
 }
 
-std::optional<std::reference_wrapper<GameMachine>> &Board::machine_at(Coord coordinates)
+std::optional<GameMachine> &Board::machine_at(Coord coordinates)
 {
     return machines[coordinates];
 }

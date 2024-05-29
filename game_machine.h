@@ -14,7 +14,7 @@ public:
     MachineDirection direction;
     Coord coordinates;
     MachineState machine_state;
-    int32_t attack_power_modifier;
+    int32_t attack_power_modifier = 0;
     Player side;
 
     GameMachine(std::reference_wrapper<const Machine> machine, MachineDirection direction, Coord coordinates, MachineState machine_state, Player side);
