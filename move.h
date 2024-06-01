@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include "enums.h"
 #include "coord.h"
 
 class Move

@@ -179,17 +179,22 @@ int main()
         }
         else if (tokens[0] == "endturn")
         {
-            if (game->machines_touched < 2)
+            if (!game->can_end_turn())
             {
-                std::cout << "You must move two machines" << std::endl;
+                std::cout << "Cannot end turn" << std::endl;
                 continue;
             }
 
-            game->turn = game->turn == Player::Player ? Player::Opponent : Player::Player;
-            game->pre_turn();
+            game->end_turn();
         }
         else if (tokens[0] == "moves")
         {
+            if (tokens.size() != 3)
+            {
+                std::cout << "Invalid moves command" << std::endl;
+                continue;
+            }
+
             int row = std::stoi(tokens[1]);
             int column = std::stoi(tokens[2]);
 
@@ -208,6 +213,12 @@ int main()
         }
         else if (tokens[0] == "attacks")
         {
+            if (tokens.size() != 3)
+            {
+                std::cout << "Invalid attacks command" << std::endl;
+                continue;
+            }
+
             int row = std::stoi(tokens[1]);
             int column = std::stoi(tokens[2]);
 
@@ -226,6 +237,13 @@ int main()
             int machine_row = std::stoi(tokens[1]);
             int machine_column = std::stoi(tokens[2]);
             std::string attack_direction = tokens[3];
+            bool force_touch = tokens[4] == "true";
+
+            if (tokens.size() != 5)
+            {
+                std::cout << "Invalid move command" << std::endl;
+                continue;
+            }
 
             auto machine = game->board.machine_at({machine_row, machine_column});
             if (!machine.has_value())
@@ -251,8 +269,8 @@ int main()
 
             auto attacks = game->calculate_attacks(machine.value());
 
-            auto attack = std::find_if(attacks.begin(), attacks.end(), [&attack_direction, &direction](const Attack &a)
-                                       { return a.attack_direction_from_source == direction; });
+            auto attack = std::find_if(attacks.begin(), attacks.end(), [&attack_direction, &direction, &force_touch](const Attack &a)
+                                       { return a.attack_direction_from_source == direction && ((a.counts_as_touch && force_touch) || !force_touch); });
 
             if (attack == attacks.end())
             {
@@ -261,14 +279,20 @@ int main()
             }
 
             game->make_attack(*attack);
-            game->print_board();
         }
         else if (tokens[0] == "move")
         {
+            if (tokens.size() != 6)
+            {
+                std::cout << "Invalid move command" << std::endl;
+                continue;
+            }
+
             int machine_row = std::stoi(tokens[1]);
             int machine_column = std::stoi(tokens[2]);
             int destination_row = std::stoi(tokens[3]);
             int destination_column = std::stoi(tokens[4]);
+            bool force_touch = tokens[5] == "true";
 
             auto machine = game->board.machine_at({machine_row, machine_column});
             if (!machine.has_value())
@@ -278,8 +302,8 @@ int main()
             }
 
             auto moves = game->calculate_moves(machine.value());
-            auto move = std::find_if(moves.begin(), moves.end(), [&destination_row, &destination_column](const Move &m)
-                                     { return m.destination == Coord{destination_row, destination_column}; });
+            auto move = std::find_if(moves.begin(), moves.end(), [&destination_row, &destination_column, &force_touch](const Move &m)
+                                     { return m.destination == Coord{destination_row, destination_column} && ((force_touch && m.counts_as_touch) || !force_touch); });
 
             if (move == moves.end())
             {
@@ -288,7 +312,6 @@ int main()
             }
 
             game->make_move(*move);
-            game->print_board();
         }
     }
 }

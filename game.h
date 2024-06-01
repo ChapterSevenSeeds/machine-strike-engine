@@ -21,26 +21,7 @@ public:
     int player_machine_count = 0;
     int opponent_machine_count = 0;
 
-    Game(
-        Board board,
-        Player turn) : board(board),
-                       turn(turn)
-    {
-        for (const auto &machine : board)
-        {
-            if (machine.has_value())
-            {
-                if (machine.value().side == Player::Player)
-                {
-                    player_machine_count++;
-                }
-                else
-                {
-                    opponent_machine_count++;
-                }
-            }
-        }
-    }
+    Game(Board board, Player turn);
 
     // Debug
     void print_board(std::optional<GameMachine> focus_machine = std::nullopt, std::optional<std::vector<Move>> moves = std::nullopt, std::optional<std::vector<Attack>> attacks = std::nullopt);
@@ -48,7 +29,7 @@ public:
     // Gameplay
     bool player_touched_required_machines() const;
     int get_turn_machine_count() const;
-    void make_move(Move &m, bool single_machine_overcharge);
+    void make_move(Move &m);
     void make_attack(Attack &attack);
     void perform_dash_attack(Attack &attack);
     void perform_gunner_attack(Attack &attack);
@@ -63,6 +44,8 @@ public:
     GameMachine &pre_apply_attack(Attack &attack);
     void modify_machine_health(GameMachine &machine, int32_t health_change);
     Winner check_winner();
+    void end_turn();
+    bool can_end_turn() const;
 
     // Attack generation
     void populate_adjacent_attacks(GameMachine &machine, MachineDirection direction, Coord source_coodinates, std::optional<std::pair<Attack, std::optional<Attack>>> &attack, std::vector<Coord> &affected_machines);

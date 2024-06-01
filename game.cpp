@@ -7,6 +7,24 @@
 #include "game.h"
 #include "attack.h"
 #include "utils.h"
+Game::Game(Board board, Player turn) : board(board),
+                                       turn(turn)
+{
+    for (const auto &machine : board)
+    {
+        if (machine.has_value())
+        {
+            if (machine.value().side == Player::Player)
+            {
+                player_machine_count++;
+            }
+            else
+            {
+                opponent_machine_count++;
+            }
+        }
+    }
+}
 
 bool Game::player_touched_required_machines() const
 {
@@ -18,7 +36,7 @@ int Game::get_turn_machine_count() const
     return turn == Player::Player ? player_machine_count : opponent_machine_count;
 }
 
-void Game::make_move(Move &m, bool single_machine_overcharge)
+void Game::make_move(Move &m)
 {
     auto &machine = board.machine_at(m.source).value();
     machine.machine_state = m.causes_state;
@@ -159,6 +177,17 @@ Winner Game::check_winner()
         return turn == Player::Player ? Winner::Player : Winner::Opponent;
 
     return Winner::None;
+}
+
+void Game::end_turn()
+{
+    turn = turn == Player::Player ? Player::Opponent : Player::Player;
+    pre_turn();
+}
+
+bool Game::can_end_turn() const
+{
+    return player_touched_required_machines();
 }
 
 #define RED "\x1B[31m"
