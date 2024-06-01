@@ -8,25 +8,22 @@
 #include "attack.h"
 #include "utils.h"
 
-void Game::make_move(Move &m)
+bool Game::player_touched_required_machines() const
+{
+    return machines_touched >= 2;
+}
+
+int Game::get_turn_machine_count() const
+{
+    return turn == Player::Player ? player_machine_count : opponent_machine_count;
+}
+
+void Game::make_move(Move &m, bool single_machine_overcharge)
 {
     auto &machine = board.machine_at(m.source).value();
-    if (machine.machine_state == MachineState::Sprinted || machine.machine_state == MachineState::Moved || machine.machine_state == MachineState::MovedAndAttacked)
-    {
-        machine.machine_state = MachineState::Overcharged;
-        modify_machine_health(machine, -2);
-    }
-    else
-    {
-        if (m.requires_sprint)
-        {
-            machine.machine_state = MachineState::Sprinted;
-        }
-        else
-        {
-            machine.machine_state = MachineState::Moved;
-        }
-    }
+    machine.machine_state = m.causes_state;
+    if (m.counts_as_touch)
+        ++machines_touched;
 
     board.move_machine(m.source, m.destination);
 }
@@ -57,12 +54,9 @@ void Game::make_attack(Attack &attack)
         break;
     }
 
-    attacker.machine_state =
-        attacker.machine_state == MachineState::Attacked || attacker.machine_state == MachineState::MovedAndAttacked
-            ? MachineState::Overcharged
-        : attacker.machine_state == MachineState::Moved
-            ? MachineState::MovedAndAttacked
-            : MachineState::Attacked;
+    attacker.machine_state = attack.causes_state;
+    if (attack.counts_as_touch)
+        ++machines_touched;
 
     if (attacker.machine_state == MachineState::Overcharged)
         modify_machine_health(attacker, -2);
@@ -70,9 +64,11 @@ void Game::make_attack(Attack &attack)
 
 void Game::pre_turn()
 {
+    machines_touched = 0;
     for (auto &machine : board)
     {
         auto &machine_ref = machine.value();
+        machine_ref.machine_state = MachineState::Ready;
         machine_ref.attack_power_modifier = 0;
 
         switch (machine_ref.machine.get().skill)
@@ -141,9 +137,15 @@ void Game::modify_machine_health(GameMachine &machine, int32_t health_change)
         board.clear_spot(machine.coordinates);
 
         if (machine.side == Player::Player)
+        {
             opponent_victory_points += machine.machine.get().points;
+            player_machine_count--;
+        }
         else
+        {
             player_victory_points += machine.machine.get().points;
+            opponent_machine_count--;
+        }
     }
 }
 
@@ -185,7 +187,7 @@ std::string get_direction_string(MachineDirection direction)
     throw std::invalid_argument("Invalid direction");
 }
 
-void Game::print_board(std::optional<GameMachine> &focus_machine, std::optional<std::vector<Move>> moves, std::optional<std::vector<Attack>> attacks)
+void Game::print_board(std::optional<GameMachine> focus_machine, std::optional<std::vector<Move>> moves, std::optional<std::vector<Attack>> attacks)
 {
     std::cout << "Turn: " << (turn == Player::Player ? "Player" : "Opponent") << "\t";
     std::cout << "Player VP: " << player_victory_points << "\t";
@@ -283,7 +285,7 @@ void Game::print_board(std::optional<GameMachine> &focus_machine, std::optional<
             std::cout << "|";
             if (move != moves->end())
             {
-                printf("%24s", (*move).requires_sprint ? "Sprint" : "Move");
+                printf("%24s", (*move).causes_state == MachineState::Sprinted ? "Sprint" : "Move");
             }
             else
             {

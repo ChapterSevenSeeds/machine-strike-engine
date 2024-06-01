@@ -20,4 +20,7 @@ public:
     GameMachine(std::reference_wrapper<const Machine> machine, MachineDirection direction, Coord coordinates, MachineState machine_state, Player side);
 
     bool is_alive() const;
+    bool has_moved() const;
+    bool has_attacked() const;
+    bool has_been_touched() const;
 };

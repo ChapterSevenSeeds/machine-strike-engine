@@ -17,19 +17,38 @@ public:
     Player turn;
     int player_victory_points = 0;
     int opponent_victory_points = 0;
+    int machines_touched = 0;
+    int player_machine_count = 0;
+    int opponent_machine_count = 0;
 
     Game(
         Board board,
         Player turn) : board(board),
                        turn(turn)
     {
+        for (const auto &machine : board)
+        {
+            if (machine.has_value())
+            {
+                if (machine.value().side == Player::Player)
+                {
+                    player_machine_count++;
+                }
+                else
+                {
+                    opponent_machine_count++;
+                }
+            }
+        }
     }
 
     // Debug
-    void print_board(std::optional<GameMachine> &focus_machine = std::nullopt, std::optional<std::vector<Move>> moves = std::nullopt, std::optional<std::vector<Attack>> attacks = std::nullopt);
+    void print_board(std::optional<GameMachine> focus_machine = std::nullopt, std::optional<std::vector<Move>> moves = std::nullopt, std::optional<std::vector<Attack>> attacks = std::nullopt);
 
     // Gameplay
-    void make_move(Move &m);
+    bool player_touched_required_machines() const;
+    int get_turn_machine_count() const;
+    void make_move(Move &m, bool single_machine_overcharge);
     void make_attack(Attack &attack);
     void perform_dash_attack(Attack &attack);
     void perform_gunner_attack(Attack &attack);
@@ -46,8 +65,8 @@ public:
     Winner check_winner();
 
     // Attack generation
-    void populate_adjacent_attacks(GameMachine &machine, MachineDirection direction, Coord source_coodinates, std::optional<Attack> &attack, std::vector<Coord> &affected_machines);
-    std::optional<Attack> first_machine_in_attack_range(MachineDirection direction, GameMachine &machine);
+    void populate_adjacent_attacks(GameMachine &machine, MachineDirection direction, Coord source_coodinates, std::optional<std::pair<Attack, std::optional<Attack>>> &attack, std::vector<Coord> &affected_machines);
+    std::optional<std::pair<Attack, std::optional<Attack>>> first_machine_in_attack_range(MachineDirection direction, GameMachine &machine);
     std::vector<Attack> calculate_attacks(GameMachine &machine);
     int32_t get_skill_combat_power_modifier_when_defending(GameMachine &machine);
     int32_t get_skill_combat_power_modifier_when_attacking(GameMachine &machine);

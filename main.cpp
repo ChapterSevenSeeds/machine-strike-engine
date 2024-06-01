@@ -50,13 +50,13 @@ BoardType<Terrain> parse_terrain(std::string &str)
     return terrain;
 }
 
-BoardType<std::optional<GameMachine>> parse_machines(std::string str, Player player)
+BoardType<std::optional<GameMachine>> parse_machines(std::string str)
 {
     BoardType<std::optional<GameMachine>> machines;
 
-    auto machine_names = split(str, ',');
+    auto machine_entries = split(str, ';');
 
-    if (machine_names.size() != 64)
+    if (machine_entries.size() != 64)
     {
         throw std::runtime_error("Invalid machine string");
     }
@@ -65,50 +65,50 @@ BoardType<std::optional<GameMachine>> parse_machines(std::string str, Player pla
     {
         for (int j = 0; j < 8; j++)
         {
-            auto machine_name = machine_names[i * 8 + j];
+            auto machine_entry = machine_entries[i * 8 + j];
 
-            if (machine_name.empty())
-            {
-                machines[{i, j}] = std::nullopt;
+            if (machine_entry.empty())
                 continue;
-            }
 
+            auto machine_data = split(machine_entry, ',');
+
+            if (machine_data.size() != 3)
+                throw std::runtime_error("Invalid machine data");
+
+            auto machine_name = machine_data[0];
             auto machine = std::find_if(ALL_MACHINES.begin(), ALL_MACHINES.end(), [&machine_name](const std::reference_wrapper<const Machine> &m)
                                         { return std::string(m.get().name) == machine_name; });
 
             if (machine == ALL_MACHINES.end())
                 throw std::runtime_error("Invalid machine name" + machine_name);
 
-            machines[{i, j}] = GameMachine(std::ref(*machine), player == Player::Player ? MachineDirection::North : MachineDirection::South, {i, j}, MachineState::Ready, player);
+            auto machine_direction = machine_data[1];
+            MachineDirection direction;
+            if (machine_direction == "N")
+                direction = MachineDirection::North;
+            else if (machine_direction == "S")
+                direction = MachineDirection::South;
+            else if (machine_direction == "E")
+                direction = MachineDirection::East;
+            else if (machine_direction == "W")
+                direction = MachineDirection::West;
+            else
+                throw std::runtime_error("Invalid machine direction");
+
+            auto machine_side = machine_data[2];
+            Player side;
+            if (machine_side == "P")
+                side = Player::Player;
+            else if (machine_side == "O")
+                side = Player::Opponent;
+            else
+                throw std::runtime_error("Invalid machine side");
+
+            machines[{i, j}] = GameMachine(std::ref(*machine), direction, {i, j}, MachineState::Ready, side);
         }
     }
 
     return machines;
-}
-
-BoardType<std::optional<GameMachine>> combine(BoardType<std::optional<GameMachine>> &a, BoardType<std::optional<GameMachine>> &b)
-{
-    BoardType<std::optional<GameMachine>> combined;
-    for (int i = 0; i < 8; i++)
-    {
-        for (int j = 0; j < 8; j++)
-        {
-            if (a[{i, j}].has_value())
-            {
-                combined[{i, j}] = a[{i, j}];
-            }
-            else if (b[{i, j}].has_value())
-            {
-                combined[{i, j}] = b[{i, j}];
-            }
-            else
-            {
-                combined[{i, j}] = std::nullopt;
-            }
-        }
-    }
-
-    return combined;
 }
 
 int main()
@@ -124,21 +124,18 @@ int main()
 
         if (tokens[0] == "newgame")
         {
-            if (tokens.size() != 5)
+            if (tokens.size() != 4)
             {
                 std::cout << "Invalid newgame command" << std::endl;
                 continue;
             }
 
             auto terrain_str = tokens[1];
-            auto player_machines_str = tokens[2];
-            auto opponent_machines_str = tokens[3];
-            auto first = tokens[4];
+            auto machines_str = tokens[2];
+            auto first = tokens[3];
 
             auto terrain = parse_terrain(terrain_str);
-            auto player_machines = parse_machines(player_machines_str, Player::Player);
-            auto opponent_machines = parse_machines(opponent_machines_str, Player::Opponent);
-            auto machines = combine(player_machines, opponent_machines);
+            auto machines = parse_machines(machines_str);
 
             Player first_player;
             if (first == "player")
@@ -150,10 +147,51 @@ int main()
 
             game = new Game({terrain, machines}, first_player);
         }
-        if (input == "moves")
+        else if (tokens[0] == "rotate")
         {
-            int row, column;
-            std::cin >> row >> column;
+            int row = std::stoi(tokens[1]);
+            int column = std::stoi(tokens[2]);
+            std::string rotation = tokens[3];
+
+            auto &machine = game->board.machine_at({row, column});
+            if (!machine.has_value())
+            {
+                std::cout << "No machine at that location" << std::endl;
+                continue;
+            }
+
+            MachineDirection direction;
+            if (rotation == "N")
+                direction = MachineDirection::North;
+            else if (rotation == "S")
+                direction = MachineDirection::South;
+            else if (rotation == "E")
+                direction = MachineDirection::East;
+            else if (rotation == "W")
+                direction = MachineDirection::West;
+            else
+            {
+                std::cout << "Invalid rotation" << std::endl;
+                continue;
+            }
+
+            machine.value().direction = direction;
+        }
+        else if (tokens[0] == "endturn")
+        {
+            if (game->machines_touched < 2)
+            {
+                std::cout << "You must move two machines" << std::endl;
+                continue;
+            }
+
+            game->turn = game->turn == Player::Player ? Player::Opponent : Player::Player;
+            game->pre_turn();
+        }
+        else if (tokens[0] == "moves")
+        {
+            int row = std::stoi(tokens[1]);
+            int column = std::stoi(tokens[2]);
 
             auto machine = game->board.machine_at({row, column});
             if (!machine.has_value())
@@ -164,14 +202,14 @@ int main()
             auto moves = game->calculate_moves(machine.value());
             game->print_board(machine, moves);
         }
-        else if (input == "print")
+        else if (tokens[0] == "print")
         {
             game->print_board();
         }
-        else if (input == "attacks")
+        else if (tokens[0] == "attacks")
         {
-            int row, column;
-            std::cin >> row >> column;
+            int row = std::stoi(tokens[1]);
+            int column = std::stoi(tokens[2]);
 
             auto machine = game->board.machine_at({row, column});
             if (!machine.has_value())
@@ -183,12 +221,11 @@ int main()
             auto attacks = game->calculate_attacks(machine.value());
             game->print_board(machine, std::nullopt, attacks);
         }
-        else if (input == "attack")
+        else if (tokens[0] == "attack")
         {
-            int machine_row, machine_column;
-            std::string attack_direction;
-            std::cin >> machine_row >> machine_column;
-            std::cin >> attack_direction;
+            int machine_row = std::stoi(tokens[1]);
+            int machine_column = std::stoi(tokens[2]);
+            std::string attack_direction = tokens[3];
 
             auto machine = game->board.machine_at({machine_row, machine_column});
             if (!machine.has_value())
@@ -199,21 +236,13 @@ int main()
 
             MachineDirection direction;
             if (attack_direction == "north")
-            {
                 direction = MachineDirection::North;
-            }
             else if (attack_direction == "south")
-            {
                 direction = MachineDirection::South;
-            }
             else if (attack_direction == "east")
-            {
                 direction = MachineDirection::East;
-            }
             else if (attack_direction == "west")
-            {
                 direction = MachineDirection::West;
-            }
             else
             {
                 std::cout << "Invalid direction" << std::endl;
@@ -234,10 +263,12 @@ int main()
             game->make_attack(*attack);
             game->print_board();
         }
-        else if (input == "move")
+        else if (tokens[0] == "move")
         {
-            int machine_row, machine_column, destination_row, destination_column;
-            std::cin >> machine_row >> machine_column >> destination_row >> destination_column;
+            int machine_row = std::stoi(tokens[1]);
+            int machine_column = std::stoi(tokens[2]);
+            int destination_row = std::stoi(tokens[3]);
+            int destination_column = std::stoi(tokens[4]);
 
             auto machine = game->board.machine_at({machine_row, machine_column});
             if (!machine.has_value())
