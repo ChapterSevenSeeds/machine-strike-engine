@@ -12,6 +12,15 @@
             "args": [],
             "cwd": "${workspaceFolder}",
             "externalConsole": true,
+        },
+        {
+            "type": "cppvsdbg",
+            "request": "launch",
+            "name": "Debug msvc tests",
+            "program": "${workspaceFolder}/out/build/msvc/tests/Debug/machine_strike_engine_test",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "externalConsole": true,
         }
     ]
 }
