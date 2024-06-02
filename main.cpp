@@ -117,6 +117,15 @@ int main()
 
     while (true)
     {
+        if (game != nullptr && game->check_winner() != Winner::None)
+        {
+            std::cout << "Game over" << std::endl;
+            std::cout << "Winner: " << (game->check_winner() == Winner::Player ? "Player" : "Opponent") << std::endl;
+            delete game;
+            game = nullptr;
+            break;
+        }
+
         std::string input;
         std::getline(std::cin, input);
 
