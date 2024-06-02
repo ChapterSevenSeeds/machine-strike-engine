@@ -7,6 +7,8 @@
 #include "attack.h"
 #include "utils.h"
 
+// TODO: Refactor the crap out of this file.
+
 MachineState attack_causes_state(GameMachine &machine)
 {
     if (machine.machine_state == MachineState::Sprinted)
@@ -18,7 +20,7 @@ MachineState attack_causes_state(GameMachine &machine)
     return MachineState::Attacked;
 }
 
-void Game::populate_adjacent_attacks(GameMachine &machine, MachineDirection direction, Coord source_coodinates, std::optional<std::pair<Attack, std::optional<Attack>>> &attack, std::vector<Coord> &affected_machines)
+void Game::populate_adjacent_attacks(GameMachine &machine, MachineDirection direction, Coord source_coodinates, std::optional<std::pair<std::optional<Attack>, std::optional<Attack>>> &attack, std::vector<Coord> &affected_machines)
 {
     // If we do not posses the sweep skill, stop.
     if (machine.machine.get().skill != MachineSkill::Sweep)
@@ -43,20 +45,27 @@ void Game::populate_adjacent_attacks(GameMachine &machine, MachineDirection dire
             // If the machine to the left or right is an enemy, and we have not already found an enemy to attack, then this is the main attack.
             if (!attack.has_value() && destination_machine.value().side != machine.side)
             {
-                attack = std::make_pair(Attack(
-                                            direction,
-                                            source_coodinates,
-                                            machine.coordinates,
-                                            attack_causes_state(machine),
-                                            machine.machine_state == MachineState::Ready),
-                                        std::nullopt);
+                auto causes_state = attack_causes_state(machine);
+                if (machine.machine_state != MachineState::Overcharged)
+                    attack = std::make_pair(Attack(
+                                                direction,
+                                                source_coodinates,
+                                                machine.coordinates,
+                                                causes_state,
+                                                machine.machine_state == MachineState::Ready),
+                                            std::nullopt);
 
                 // If we only have one machine and it has moved and if we haven't already moved two machines, we can attack again as if it were a second machine.
-                if (get_turn_machine_count() == 1 && machine.has_moved() && !player_touched_required_machines())
+                if (get_turn_machine_count() == 1 && (machine.has_moved() || machine.machine_state == MachineState::Overcharged) && !player_touched_required_machines())
                 {
-                    attack.value().second = attack.value().first; // This should copy
-                    attack.value().second.value().causes_state = MachineState::Attacked;
-                    attack.value().second.value().counts_as_touch = true;
+                    if (!attack.has_value())
+                        attack = std::make_pair(std::nullopt, std::nullopt);
+                    attack.value().second = Attack(
+                        direction,
+                        source_coodinates,
+                        machine.coordinates,
+                        MachineState::Attacked,
+                        true);
                 }
             }
         }
@@ -70,10 +79,10 @@ void Game::populate_adjacent_attacks(GameMachine &machine, MachineDirection dire
     }
 }
 
-std::optional<std::pair<Attack, std::optional<Attack>>> Game::first_machine_in_attack_range(MachineDirection direction, GameMachine &machine)
+std::optional<std::pair<std::optional<Attack>, std::optional<Attack>>> Game::first_machine_in_attack_range(MachineDirection direction, GameMachine &machine)
 {
     std::vector<Coord> affected_machines;
-    std::optional<std::pair<Attack, std::optional<Attack>>> attack;
+    std::optional<std::pair<std::optional<Attack>, std::optional<Attack>>> attack;
 
     for (int i = 0; i < machine.machine.get().range && !attack.has_value(); ++i)
     {
@@ -88,20 +97,26 @@ std::optional<std::pair<Attack, std::optional<Attack>>> Game::first_machine_in_a
         auto destination_machine = board.machine_at(destination);
         if (destination_machine.has_value() && destination_machine.value().side != machine.side)
         {
-            attack = std::make_pair(Attack(
-                                        direction,
-                                        destination,
-                                        machine.coordinates,
-                                        attack_causes_state(machine),
-                                        machine.machine_state == MachineState::Ready),
-                                    std::nullopt);
+            if (machine.machine_state != MachineState::Overcharged)
+                attack = std::make_pair(Attack(
+                                            direction,
+                                            destination,
+                                            machine.coordinates,
+                                            attack_causes_state(machine),
+                                            machine.machine_state == MachineState::Ready),
+                                        std::nullopt);
 
             // If we only have one machine and it has moved and if we haven't already moved two machines, we can attack again as if it were a second machine.
-            if (get_turn_machine_count() == 1 && machine.has_moved() && !player_touched_required_machines())
+            if (get_turn_machine_count() == 1 && (machine.has_moved() || machine.machine_state == MachineState::Overcharged) && !player_touched_required_machines())
             {
-                attack.value().second = attack.value().first; // This should copy
-                attack.value().second.value().causes_state = MachineState::Attacked;
-                attack.value().second.value().counts_as_touch = true;
+                if (!attack.has_value())
+                    attack = std::make_pair(std::nullopt, std::nullopt);
+                attack.value().second = Attack(
+                    direction,
+                    destination,
+                    machine.coordinates,
+                    MachineState::Attacked,
+                    true);
             }
 
             affected_machines.push_back(destination);
@@ -112,7 +127,8 @@ std::optional<std::pair<Attack, std::optional<Attack>>> Game::first_machine_in_a
 
     if (attack.has_value())
     {
-        attack.value().first.affected_machines = affected_machines;
+        if (attack.value().first.has_value())
+            attack.value().first.value().affected_machines = affected_machines;
         if (attack.value().second.has_value())
             attack.value().second.value().affected_machines = affected_machines;
     }
@@ -147,7 +163,8 @@ std::vector<Attack> Game::calculate_attacks(GameMachine &machine)
             auto attack = first_machine_in_attack_range(direction, machine);
             if (attack.has_value())
             {
-                attacks.push_back(attack.value().first);
+                if (attack.value().first.has_value())
+                    attacks.push_back(attack.value().first.value());
                 if (attack.value().second.has_value())
                     attacks.push_back(attack.value().second.value());
             }
@@ -157,7 +174,7 @@ std::vector<Attack> Game::calculate_attacks(GameMachine &machine)
         case MachineType::Gunner:
         {
             std::vector<Coord> affected_machines;
-            std::optional<std::pair<Attack, std::optional<Attack>>> main_attack;
+            std::optional<std::pair<std::optional<Attack>, std::optional<Attack>>> main_attack;
             auto end_of_attack_range = traverse_direction(machine.coordinates, direction, machine.machine.get().range);
             if (end_of_attack_range.out_of_bounds())
                 continue;
@@ -165,20 +182,26 @@ std::vector<Attack> Game::calculate_attacks(GameMachine &machine)
             auto destination_machine = board.machine_at(end_of_attack_range);
             if (destination_machine.has_value() && destination_machine.value().side != machine.side)
             {
-                main_attack = std::make_pair(Attack(
-                                                 direction,
-                                                 end_of_attack_range,
-                                                 machine.coordinates,
-                                                 attack_causes_state(machine),
-                                                 machine.machine_state == MachineState::Ready),
-                                             std::nullopt);
+                if (machine.machine_state != MachineState::Overcharged)
+                    main_attack = std::make_pair(Attack(
+                                                     direction,
+                                                     end_of_attack_range,
+                                                     machine.coordinates,
+                                                     attack_causes_state(machine),
+                                                     machine.machine_state == MachineState::Ready),
+                                                 std::nullopt);
 
                 // If we only have one machine and it has moved and if we haven't already moved two machines, we can attack again as if it were a second machine.
-                if (get_turn_machine_count() == 1 && machine.has_moved() && !player_touched_required_machines())
+                if (get_turn_machine_count() == 1 && (machine.has_moved() || machine.machine_state == MachineState::Overcharged) && !player_touched_required_machines())
                 {
-                    main_attack.value().second = main_attack.value().first; // This should copy
-                    main_attack.value().second.value().causes_state = MachineState::Attacked;
-                    main_attack.value().second.value().counts_as_touch = true;
+                    if (!main_attack.has_value())
+                        main_attack = std::make_pair(std::nullopt, std::nullopt);
+                    main_attack.value().second = Attack(
+                        direction,
+                        end_of_attack_range,
+                        machine.coordinates,
+                        MachineState::Attacked,
+                        true);
                 }
 
                 affected_machines.push_back(end_of_attack_range);
@@ -188,8 +211,11 @@ std::vector<Attack> Game::calculate_attacks(GameMachine &machine)
 
             if (main_attack.has_value())
             {
-                main_attack.value().first.affected_machines = affected_machines;
-                attacks.push_back(main_attack.value().first);
+                if (main_attack.value().first.has_value())
+                {
+                    main_attack.value().first.value().affected_machines = affected_machines;
+                    attacks.push_back(main_attack.value().first.value());
+                }
 
                 if (main_attack.value().second.has_value())
                 {
@@ -219,8 +245,11 @@ std::vector<Attack> Game::calculate_attacks(GameMachine &machine)
             if (first_enemy_in_path.has_value())
             {
                 // The source and affected machines should already be what we want them to be.
-                first_enemy_in_path.value().first.destination = end_of_attack_range;
-                attacks.push_back(first_enemy_in_path.value().first);
+                if (first_enemy_in_path.value().first.has_value())
+                {
+                    first_enemy_in_path.value().first.value().destination = end_of_attack_range;
+                    attacks.push_back(first_enemy_in_path.value().first.value());
+                }
                 if (first_enemy_in_path.value().second.has_value())
                 {
                     first_enemy_in_path.value().second.value().destination = end_of_attack_range;

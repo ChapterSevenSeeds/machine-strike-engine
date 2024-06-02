@@ -48,8 +48,8 @@ public:
     bool can_end_turn() const;
 
     // Attack generation
-    void populate_adjacent_attacks(GameMachine &machine, MachineDirection direction, Coord source_coodinates, std::optional<std::pair<Attack, std::optional<Attack>>> &attack, std::vector<Coord> &affected_machines);
-    std::optional<std::pair<Attack, std::optional<Attack>>> first_machine_in_attack_range(MachineDirection direction, GameMachine &machine);
+    void populate_adjacent_attacks(GameMachine &machine, MachineDirection direction, Coord source_coodinates, std::optional<std::pair<std::optional<Attack>, std::optional<Attack>>> &attack, std::vector<Coord> &affected_machines);
+    std::optional<std::pair<std::optional<Attack>, std::optional<Attack>>> first_machine_in_attack_range(MachineDirection direction, GameMachine &machine);
     std::vector<Attack> calculate_attacks(GameMachine &machine);
     int32_t get_skill_combat_power_modifier_when_defending(GameMachine &machine);
     int32_t get_skill_combat_power_modifier_when_attacking(GameMachine &machine);

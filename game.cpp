@@ -43,6 +43,9 @@ void Game::make_move(Move &m)
     if (m.counts_as_touch)
         ++machines_touched;
 
+    if (machine.machine_state == MachineState::Overcharged)
+        modify_machine_health(machine, -2);
+
     board.move_machine(m.source, m.destination);
 }
 
@@ -310,11 +313,13 @@ void Game::print_board(std::optional<GameMachine> focus_machine, std::optional<s
             Coord coord{row, column};
             auto move = std::find_if(moves->begin(), moves->end(), [&coord](const Move &m)
                                      { return m.destination == coord; });
+            auto move_with_force_touch = std::find_if(moves->begin(), moves->end(), [&coord](const Move &m)
+                                                      { return m.destination == coord && m.counts_as_touch; });
 
             std::cout << "|";
             if (move != moves->end())
             {
-                printf("%24s", (*move).causes_state == MachineState::Sprinted ? "Sprint" : "Move");
+                printf("%24s", (*move).causes_state == MachineState::Sprinted || (move_with_force_touch != moves->end() && (*move_with_force_touch).causes_state == MachineState::Sprinted) ? "Sprint" : "Move");
             }
             else
             {

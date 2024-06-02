@@ -21,12 +21,24 @@ bool Board::is_space_occupied(Coord coord)
 
 BoardIterator Board::begin()
 {
-    return BoardIterator(this);
+    for (int row = 0; row <= 7; ++row)
+    {
+        for (int column = 0; column <= 7; ++column)
+        {
+            Coord coord = {row, column};
+            if (machine_at(coord).has_value())
+            {
+                return BoardIterator(this, coord);
+            }
+        }
+    }
+
+    return end();
 }
 
 BoardIterator Board::end()
 {
-    return BoardIterator(this, {7, 7});
+    return BoardIterator(this, {8, 0});
 }
 
 Terrain &Board::terrain_at(Coord coordinates)
