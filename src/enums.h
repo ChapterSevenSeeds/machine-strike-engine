@@ -181,6 +181,7 @@ enum class MachineState
     Attacked,         // Has attacked, can move and rotate
     MovedAndAttacked, // Has moved and attacked, can rotate
     Overcharged,      // Can't do anything
+    MustMove,         // The machine attacked before moving. It must now move.
 };
 
 enum class Rotation
@@ -201,4 +202,20 @@ enum class Winner
     Player,
     Opponent,
     None
+};
+
+enum class GameState
+{
+    /**
+     * The player must move their first machine.
+     */
+    TouchFirstMachine,
+    /**
+     * The player must move their second machine.
+     */
+    TouchSecondMachine,
+    /**
+     * The player can rotate their machines or end their turn.
+     */
+    MustEndTurn,
 };

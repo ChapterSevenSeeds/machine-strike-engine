@@ -69,9 +69,9 @@ std::vector<Move> Game::expand_moves(int32_t distance_travelled, Coord coord, Ga
                                                                           : requires_sprint          ? MachineState::Sprinted
                                                                                                      : MachineState::Moved;
         if (machine.machine_state != MachineState::Overcharged)
-            moves.emplace_back(new_coord, distance_travelled, machine.coordinates, causes_state, machine.machine_state == MachineState::Ready, spot_state == SpotState::Occupied);
-        if (get_turn_machine_count() == 1 && (machine.has_moved() || machine.machine_state == MachineState::Overcharged) && !player_touched_required_machines()) // If we only have one machine and it has moved and if we haven't already moved two machines, we can't move it again as if it were a second machine.
-            moves.emplace_back(new_coord, distance_travelled, machine.coordinates, requires_sprint ? MachineState::Sprinted : MachineState::Moved, true, spot_state == SpotState::Occupied);
+            moves.emplace_back(new_coord, distance_travelled, machine.coordinates, causes_state, spot_state == SpotState::Occupied);
+        if (get_turn_machine_count() == 1 && (machine.has_moved() || machine.machine_state == MachineState::Overcharged) && state == GameState::TouchFirstMachine) // If we only have one machine and it has moved and if we haven't already moved two machines, we can move it again as if it were a second machine.
+            moves.emplace_back(new_coord, distance_travelled, machine.coordinates, requires_sprint ? MachineState::Sprinted : MachineState::Moved, spot_state == SpotState::Occupied);
 
         visited[new_coord] = true;
     }
@@ -84,8 +84,15 @@ std::vector<Move> Game::calculate_moves(GameMachine &machine)
     if (machine.side != turn) // If it's not our turn, we can't move
         return {};
 
+    if (must_move_last_touched_machine && &machine != last_touched_machine) // If we must move a machine and it's not the machine we touched last, we can't move
+        return {};
+
     // If we are overcharged and we have more than one machine or we have already moved two machines, we can't move
-    if (machine.machine_state == MachineState::Overcharged && (get_turn_machine_count() > 1 || player_touched_required_machines()))
+    if (machine.machine_state == MachineState::Overcharged && (get_turn_machine_count() > 1 || state == GameState::MustEndTurn))
+        return {};
+
+    // Is the machine eligible for an overcharge?
+    if (state == GameState::MustEndTurn && !machine.has_moved())
         return {};
 
     BoardType<bool> visited{false};

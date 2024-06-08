@@ -51,12 +51,11 @@ void Game::populate_adjacent_attacks(GameMachine &machine, MachineDirection dire
                                                 direction,
                                                 source_coodinates,
                                                 machine.coordinates,
-                                                causes_state,
-                                                machine.machine_state == MachineState::Ready),
+                                                causes_state),
                                             std::nullopt);
 
                 // If we only have one machine and it has moved and if we haven't already moved two machines, we can attack again as if it were a second machine.
-                if (get_turn_machine_count() == 1 && (machine.has_moved() || machine.machine_state == MachineState::Overcharged) && !player_touched_required_machines())
+                if (get_turn_machine_count() == 1 && (machine.has_moved() || machine.machine_state == MachineState::Overcharged) && state != GameState::MustEndTurn)
                 {
                     if (!attack.has_value())
                         attack = std::make_pair(std::nullopt, std::nullopt);
@@ -64,8 +63,7 @@ void Game::populate_adjacent_attacks(GameMachine &machine, MachineDirection dire
                         direction,
                         source_coodinates,
                         machine.coordinates,
-                        MachineState::Attacked,
-                        true);
+                        MachineState::Attacked);
                 }
             }
         }
@@ -102,12 +100,11 @@ std::optional<std::pair<std::optional<Attack>, std::optional<Attack>>> Game::fir
                                             direction,
                                             destination,
                                             machine.coordinates,
-                                            attack_causes_state(machine),
-                                            machine.machine_state == MachineState::Ready),
+                                            attack_causes_state(machine)),
                                         std::nullopt);
 
             // If we only have one machine and it has moved and if we haven't already moved two machines, we can attack again as if it were a second machine.
-            if (get_turn_machine_count() == 1 && (machine.has_moved() || machine.machine_state == MachineState::Overcharged) && !player_touched_required_machines())
+            if (get_turn_machine_count() == 1 && (machine.has_moved() || machine.machine_state == MachineState::Overcharged) && state != GameState::MustEndTurn)
             {
                 if (!attack.has_value())
                     attack = std::make_pair(std::nullopt, std::nullopt);
@@ -115,8 +112,7 @@ std::optional<std::pair<std::optional<Attack>, std::optional<Attack>>> Game::fir
                     direction,
                     destination,
                     machine.coordinates,
-                    MachineState::Attacked,
-                    true);
+                    MachineState::Attacked);
             }
 
             affected_machines.push_back(destination);
@@ -143,7 +139,10 @@ std::vector<Attack> Game::calculate_attacks(GameMachine &machine)
     if (machine.side != turn) // If it's not our turn, we can't attack
         return attacks;
 
-    if (machine.machine_state == MachineState::Overcharged && (get_turn_machine_count() > 1 || player_touched_required_machines()))
+    if (must_move_last_touched_machine) // If we must move the last touched machine, we can't attack
+        return attacks;
+
+    if (machine.machine_state == MachineState::Overcharged && (get_turn_machine_count() > 1 || state == GameState::MustEndTurn))
         return attacks;
 
     for (auto direction : {
@@ -187,12 +186,11 @@ std::vector<Attack> Game::calculate_attacks(GameMachine &machine)
                                                      direction,
                                                      end_of_attack_range,
                                                      machine.coordinates,
-                                                     attack_causes_state(machine),
-                                                     machine.machine_state == MachineState::Ready),
+                                                     attack_causes_state(machine)),
                                                  std::nullopt);
 
                 // If we only have one machine and it has moved and if we haven't already moved two machines, we can attack again as if it were a second machine.
-                if (get_turn_machine_count() == 1 && (machine.has_moved() || machine.machine_state == MachineState::Overcharged) && !player_touched_required_machines())
+                if (get_turn_machine_count() == 1 && (machine.has_moved() || machine.machine_state == MachineState::Overcharged) && state != GameState::MustEndTurn)
                 {
                     if (!main_attack.has_value())
                         main_attack = std::make_pair(std::nullopt, std::nullopt);
@@ -200,8 +198,7 @@ std::vector<Attack> Game::calculate_attacks(GameMachine &machine)
                         direction,
                         end_of_attack_range,
                         machine.coordinates,
-                        MachineState::Attacked,
-                        true);
+                        MachineState::Attacked);
                 }
 
                 affected_machines.push_back(end_of_attack_range);

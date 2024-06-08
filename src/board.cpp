@@ -9,10 +9,10 @@ void Board::move_machine(Coord source, Coord destination)
     if (!machines[source].has_value() || machines[destination].has_value())
         return;
 
-    auto &source_machine = machines[source].value();
-    machines[destination] = source_machine;
-    machines[source] = std::nullopt;
-    source_machine.coordinates = destination;
+
+    machines[destination] = std::move(machines[source]).value();
+    machines[source].reset();
+    machines[destination].value().coordinates = destination;
 }
 
 bool Board::is_space_occupied(Coord coord)

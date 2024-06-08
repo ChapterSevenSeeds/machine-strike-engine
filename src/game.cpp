@@ -26,11 +26,6 @@ Game::Game(Board board, Player turn) : board(board),
     }
 }
 
-bool Game::player_touched_required_machines() const
-{
-    return machines_touched >= 2;
-}
-
 int Game::get_turn_machine_count() const
 {
     return turn == Player::Player ? player_machine_count : opponent_machine_count;
@@ -40,8 +35,14 @@ void Game::make_move(Move &m)
 {
     auto &machine = board.machine_at(m.source).value();
     machine.machine_state = m.causes_state;
-    if (m.counts_as_touch)
-        ++machines_touched;
+    if (m.causes_state != MachineState::Overcharged)
+    {
+        must_move_last_touched_machine = false;
+        if (state == GameState::TouchFirstMachine)
+            state = GameState::TouchSecondMachine;
+        else if (state == GameState::TouchSecondMachine)
+            state = GameState::MustEndTurn;
+    }
 
     if (machine.machine_state == MachineState::Overcharged)
         modify_machine_health(machine, -2);
@@ -52,7 +53,10 @@ void Game::make_move(Move &m)
 void Game::make_attack(Attack &attack)
 {
     auto &attacker = board.machine_at(attack.source).value();
+    last_touched_machine = &attacker;
+    must_move_last_touched_machine = true;
     attacker.direction = attack.attack_direction_from_source;
+
     switch (attacker.machine.get().machine_type)
     {
     case MachineType::Dash:
@@ -76,16 +80,13 @@ void Game::make_attack(Attack &attack)
     }
 
     attacker.machine_state = attack.causes_state;
-    if (attack.counts_as_touch)
-        ++machines_touched;
-
     if (attacker.machine_state == MachineState::Overcharged)
         modify_machine_health(attacker, -2);
 }
 
 void Game::pre_turn()
 {
-    machines_touched = 0;
+    state = GameState::TouchFirstMachine;
     for (auto &machine : board)
     {
         auto &machine_ref = machine.value();
@@ -190,7 +191,7 @@ void Game::end_turn()
 
 bool Game::can_end_turn() const
 {
-    return player_touched_required_machines();
+    return state == GameState::MustEndTurn;
 }
 
 #define RED "\x1B[31m"
@@ -313,13 +314,13 @@ void Game::print_board(std::optional<GameMachine> focus_machine, std::optional<s
             Coord coord{row, column};
             auto move = std::find_if(moves->begin(), moves->end(), [&coord](const Move &m)
                                      { return m.destination == coord; });
-            auto move_with_force_touch = std::find_if(moves->begin(), moves->end(), [&coord](const Move &m)
-                                                      { return m.destination == coord && m.counts_as_touch; });
+            auto move_with_overcharge = std::find_if(moves->begin(), moves->end(), [&coord](const Move &m)
+                                                      { return m.destination == coord && m.causes_state == MachineState::Overcharged; });
 
             std::cout << "|";
             if (move != moves->end())
             {
-                printf("%24s", (*move).causes_state == MachineState::Sprinted || (move_with_force_touch != moves->end() && (*move_with_force_touch).causes_state == MachineState::Sprinted) ? "Sprint" : "Move");
+                printf("%24s", (*move).causes_state == MachineState::Sprinted || (move_with_overcharge != moves->end() && (*move_with_overcharge).causes_state == MachineState::Sprinted) ? "Sprint" : "Move");
             }
             else
             {

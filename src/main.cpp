@@ -246,7 +246,7 @@ int main()
             int machine_row = std::stoi(tokens[1]);
             int machine_column = std::stoi(tokens[2]);
             std::string attack_direction = tokens[3];
-            bool with_touch = tokens[4] == "true";
+            bool overcharge = tokens[4] == "true";
 
             if (tokens.size() != 5)
             {
@@ -278,8 +278,8 @@ int main()
 
             auto attacks = game->calculate_attacks(machine.value());
 
-            auto attack = std::find_if(attacks.begin(), attacks.end(), [&attack_direction, &direction, &with_touch](const Attack &a)
-                                       { return a.attack_direction_from_source == direction && a.counts_as_touch == with_touch; });
+            auto attack = std::find_if(attacks.begin(), attacks.end(), [&attack_direction, &direction, &overcharge](const Attack &a)
+                                       { return a.attack_direction_from_source == direction && ((overcharge && a.causes_state == MachineState::Overcharged) || !overcharge); });
 
             if (attack == attacks.end())
             {
@@ -301,7 +301,7 @@ int main()
             int machine_column = std::stoi(tokens[2]);
             int destination_row = std::stoi(tokens[3]);
             int destination_column = std::stoi(tokens[4]);
-            bool with_touch = tokens[5] == "true";
+            bool overcharge = tokens[5] == "true";
 
             auto machine = game->board.machine_at({machine_row, machine_column});
             if (!machine.has_value())
@@ -311,8 +311,8 @@ int main()
             }
 
             auto moves = game->calculate_moves(machine.value());
-            auto move = std::find_if(moves.begin(), moves.end(), [&destination_row, &destination_column, &with_touch](const Move &m)
-                                     { return m.destination == Coord{destination_row, destination_column} && with_touch == m.counts_as_touch; });
+            auto move = std::find_if(moves.begin(), moves.end(), [&destination_row, &destination_column, &overcharge](const Move &m)
+                                     { return m.destination == Coord{destination_row, destination_column} && ((overcharge && m.causes_state == MachineState::Overcharged) || !overcharge); });
 
             if (move == moves.end())
             {

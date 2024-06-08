@@ -16,16 +16,13 @@ public:
     // These coordinates should always point to machines on the board.
     std::vector<Coord> affected_machines;
     MachineState causes_state;
-    bool counts_as_touch;
 
     Attack(
         MachineDirection attack_direction_from_source,
         Coord destination,
         Coord source,
-        MachineState causes_state,
-        bool counts_as_touch) : attack_direction_from_source(attack_direction_from_source),
-                        destination(destination),
-                        source(source),
-                        causes_state(causes_state),
-                        counts_as_touch(counts_as_touch) {}
+        MachineState causes_state) : attack_direction_from_source(attack_direction_from_source),
+                                     destination(destination),
+                                     source(source),
+                                     causes_state(causes_state) {}
 };
