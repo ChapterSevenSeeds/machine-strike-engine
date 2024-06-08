@@ -50,7 +50,7 @@ public:
                 coord.column = 0;
                 coord.row++;
             }
-        } while (!board->is_space_occupied(coord) && !coord.out_of_bounds());
+        } while (!coord.out_of_bounds() && !board->is_space_occupied(coord));
         return *this;
     }
 

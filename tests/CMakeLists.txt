@@ -1,5 +1,3 @@
-
-
 include(FetchContent)
 FetchContent_Declare(
   googletest
@@ -12,6 +10,13 @@ FetchContent_MakeAvailable(googletest)
 add_executable(
   machine_strike_engine_test
   tests.cpp
+  ../src/board.cpp
+  ../src/game.cpp
+  ../src/game_attacks.cpp
+  ../src/game_attack_generation.cpp
+  ../src/game_machine.cpp
+  ../src/game_move_generation.cpp
+  ../src/machine.cpp
 )
 target_link_libraries(
   machine_strike_engine_test
