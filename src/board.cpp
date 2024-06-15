@@ -46,7 +46,7 @@ Terrain &Board::terrain_at(Coord coordinates)
     return terrain[coordinates];
 }
 
-GameMachine* &Board::machine_at(Coord coordinates)
+GameMachine* Board::machine_at(Coord coordinates)
 {
     return machines[coordinates];
 }

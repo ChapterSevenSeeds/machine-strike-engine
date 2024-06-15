@@ -162,7 +162,7 @@ int main()
             int column = std::stoi(tokens[2]);
             std::string rotation = tokens[3];
 
-            auto &machine = game->board->machine_at({row, column});
+            auto machine = game->board->machine_at({row, column});
             if (machine == nullptr)
             {
                 std::cout << "No machine at that location" << std::endl;
@@ -243,16 +243,16 @@ int main()
         }
         else if (tokens[0] == "attack")
         {
-            int machine_row = std::stoi(tokens[1]);
-            int machine_column = std::stoi(tokens[2]);
-            std::string attack_direction = tokens[3];
-            bool overcharge = tokens[4] == "true";
-
             if (tokens.size() != 5)
             {
                 std::cout << "Invalid move command" << std::endl;
                 continue;
             }
+
+            int machine_row = std::stoi(tokens[1]);
+            int machine_column = std::stoi(tokens[2]);
+            std::string attack_direction = tokens[3];
+            bool overcharge = tokens[4] == "true";
 
             auto machine = game->board->machine_at({machine_row, machine_column});
             if (machine == nullptr)
@@ -279,7 +279,7 @@ int main()
             auto attacks = game->calculate_attacks(machine);
 
             auto attack = std::find_if(attacks.begin(), attacks.end(), [&attack_direction, &direction, &overcharge](const Attack &a)
-                                       { return a.attack_direction_from_source == direction && ((overcharge && a.causes_state == MachineState::Overcharged) || !overcharge); });
+                                       { return a.attack_direction_from_source == direction && ((overcharge && a.causes_state == MachineState::Overcharged) || (!overcharge && a.causes_state != MachineState::Overcharged)); });
 
             if (attack == attacks.end())
             {
@@ -312,7 +312,7 @@ int main()
 
             auto moves = game->calculate_moves(machine);
             auto move = std::find_if(moves.begin(), moves.end(), [&destination_row, &destination_column, &overcharge](const Move &m)
-                                     { return m.destination == Coord{destination_row, destination_column} && ((overcharge && m.causes_state == MachineState::Overcharged) || !overcharge); });
+                                     { return m.destination == Coord{destination_row, destination_column} && ((overcharge && m.causes_state == MachineState::Overcharged) || (!overcharge && m.causes_state != MachineState::Overcharged)); });
 
             if (move == moves.end())
             {

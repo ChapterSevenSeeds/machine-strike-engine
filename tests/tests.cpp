@@ -37,7 +37,7 @@ std::vector<Attack> non_overcharge_attacks(Game &game, GameMachine *machine)
 {
   auto all_attacks = game.calculate_attacks(machine);
   auto applicable_attacks_iterator = std::remove_if(all_attacks.begin(), all_attacks.end(), [](const Attack &attack)
-                                                   { return attack.causes_state == MachineState::Overcharged; });
+                                                    { return attack.causes_state == MachineState::Overcharged; });
   all_attacks.erase(applicable_attacks_iterator, all_attacks.end());
   return all_attacks;
 }
@@ -186,7 +186,7 @@ TEST(machine_strike_engine_test, Dual_friendly_moving_logic)
   EXPECT_EQ(game.state, GameState::TouchSecondMachine); // We must now move the second machine
   EXPECT_EQ(friendly1->machine_state, MachineState::Overcharged);
   EXPECT_EQ(friendly2->machine_state, MachineState::Ready);
-  EXPECT_EQ(friendly1->health, SNAPMAW.health - 2); // We took 2 points of damage for overcharging
+  EXPECT_EQ(friendly1->health, SNAPMAW.health - 2);     // We took 2 points of damage for overcharging
   EXPECT_EQ(game.calculate_moves(friendly1).size(), 0); // We can no longer move the first machine since we have a second machine
   EXPECT_NE(game.calculate_moves(friendly2).size(), 0); // We can move the second machine
 
@@ -209,9 +209,9 @@ TEST(machine_strike_engine_test, Machine_can_no_longer_attack_after_sprinting)
 {
   auto game = create_game(all_grassland, Player::Player,
                           {GameMachine(std::ref(SNAPMAW), MachineDirection::South, {0, 0}, MachineState::Ready, Player::Player),
-                          GameMachine(std::ref(SNAPMAW), MachineDirection::South, {0, 1}, MachineState::Ready, Player::Player),
-                          GameMachine(std::ref(SNAPMAW), MachineDirection::South, {4, 0}, MachineState::Ready, Player::Opponent),
-                          GameMachine(std::ref(SNAPMAW), MachineDirection::South, {0, 3}, MachineState::Ready, Player::Opponent)});
+                           GameMachine(std::ref(SNAPMAW), MachineDirection::South, {0, 1}, MachineState::Ready, Player::Player),
+                           GameMachine(std::ref(SNAPMAW), MachineDirection::South, {4, 0}, MachineState::Ready, Player::Opponent),
+                           GameMachine(std::ref(SNAPMAW), MachineDirection::South, {0, 3}, MachineState::Ready, Player::Opponent)});
   auto friendly1 = game.board->machine_at({0, 0});
   auto friendly2 = game.board->machine_at({0, 1});
 
@@ -220,7 +220,7 @@ TEST(machine_strike_engine_test, Machine_can_no_longer_attack_after_sprinting)
 
   EXPECT_EQ(friendly1->coordinates, Coord(3, 0));
   EXPECT_EQ(friendly1->machine_state, MachineState::Sprinted);
-  EXPECT_EQ(game.state, GameState::TouchSecondMachine); // We must now move the second machine
+  EXPECT_EQ(game.state, GameState::TouchSecondMachine);         // We must now move the second machine
   EXPECT_EQ(non_overcharge_attacks(game, friendly1).size(), 0); // We can no longer attack without overcharging
 
   move = get_move_with_destination_coords(game, friendly2, {0, 2}); // Move the second machine just one space
@@ -230,4 +230,59 @@ TEST(machine_strike_engine_test, Machine_can_no_longer_attack_after_sprinting)
   EXPECT_EQ(friendly2->machine_state, MachineState::Moved);
   EXPECT_EQ(game.state, GameState::MustEndTurn);
   EXPECT_NE(non_overcharge_attacks(game, friendly2).size(), 0); // We can attack with the second machine without overcharging
+}
+
+TEST(machine_strike_engine_test, Move_before_attack_doesnt_require_subsequent_attack)
+{
+  auto game = create_game(all_grassland, Player::Player,
+                          {GameMachine(std::ref(LONGLEG), MachineDirection::North, {6, 1}, MachineState::Ready, Player::Player),
+                           GameMachine(std::ref(GRAZER), MachineDirection::North, {7, 3}, MachineState::Ready, Player::Player),
+                           GameMachine(std::ref(SCRAPPER), MachineDirection::South, {2, 2}, MachineState::Ready, Player::Opponent)});
+
+  auto friendly = game.board->machine_at({6, 1});
+  auto friendly2 = game.board->machine_at({7, 3});
+  auto move = get_move_with_destination_coords(game, friendly, {4, 2});
+  game.make_move(move);
+  MAKE_FIRST_ATTACK(game, friendly);
+
+  EXPECT_TRUE(friendly->has_moved());
+  EXPECT_TRUE(friendly->has_attacked());                         // We moved and attacked
+  EXPECT_NE(friendly->machine_state, MachineState::Overcharged); // But we did not overcharge
+
+  EXPECT_NE(game.calculate_moves(friendly2).size(), 0); // We should be able to move the second machine.
+}
+
+TEST(machine_strike_engine_test, Normal_ram_attack_knocks_machine_and_attacker_takes_place)
+{
+  auto game = create_game(all_grassland, Player::Player,
+                          {GameMachine(std::ref(GRAZER), MachineDirection::North, {2, 3}, MachineState::Ready, Player::Player),
+                           GameMachine(std::ref(BURROWER), MachineDirection::North, {1, 3}, MachineState::Ready, Player::Opponent)});
+
+  auto friendly = game.board->machine_at({2, 3});
+  auto enemy = game.board->machine_at({1, 3});
+
+  MAKE_FIRST_ATTACK(game, friendly);
+
+  EXPECT_TRUE(enemy->coordinates == Coord(0, 3));    // The enemy was knocked back
+  EXPECT_TRUE(friendly->coordinates == Coord(1, 3)); // The attacker took the enemy's place
+}
+
+TEST(machine_strike_engine_test, Ram_attack_blocked_by_machine_causes_damage_to_both_machines)
+{
+  auto game = create_game(all_grassland, Player::Player,
+                          {GameMachine(std::ref(GRAZER), MachineDirection::North, {2, 3}, MachineState::Ready, Player::Player),
+                           GameMachine(std::ref(BURROWER), MachineDirection::North, {1, 3}, MachineState::Ready, Player::Opponent),
+                           GameMachine(std::ref(BURROWER), MachineDirection::North, {0, 3}, MachineState::Ready, Player::Opponent)});
+
+  auto friendly = game.board->machine_at({2, 3});
+  auto enemy1 = game.board->machine_at({1, 3});
+  auto enemy2 = game.board->machine_at({0, 3});
+
+  MAKE_FIRST_ATTACK(game, friendly);
+
+  EXPECT_TRUE(enemy1->coordinates == Coord(1, 3));
+  EXPECT_TRUE(enemy2->coordinates == Coord(0, 3));
+  EXPECT_EQ(enemy1->health, GRAZER.health - 2);      // One point of health for the attack and one for getting rammed into another machine
+  EXPECT_EQ(enemy2->health, GRAZER.health - 1);      // One point of health for getting rammed into by the defender
+  EXPECT_TRUE(friendly->coordinates == Coord(2, 3)); // We couldn't move
 }

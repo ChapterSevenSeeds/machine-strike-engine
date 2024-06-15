@@ -215,7 +215,7 @@ enum class GameState
      */
     TouchSecondMachine,
     /**
-     * The player can rotate their machines or end their turn.
+     * The player can rotate their machines or end their turn (or overcharge any machines that can be overcharged).
      */
     MustEndTurn,
 };

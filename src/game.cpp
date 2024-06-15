@@ -9,7 +9,7 @@
 #include "utils.h"
 Game::Game(BoardType<std::optional<GameMachine>> machines, BoardType<Terrain> terrain, Player turn) : turn(turn)
 {
-    BoardType<GameMachine *> board_machines {nullptr};
+    BoardType<GameMachine *> board_machines{nullptr};
 
     for (int row = 0; row < 8; ++row)
     {
@@ -68,9 +68,9 @@ void Game::make_move(Move &m)
 
 void Game::make_attack(Attack &attack)
 {
-    auto &attacker = board->machine_at(attack.source);
+    auto attacker = board->machine_at(attack.source);
     last_touched_machine = attacker;
-    must_move_last_touched_machine = true;
+    must_move_last_touched_machine = attacker->machine_state == MachineState::Ready; // If we haven't touched this machine yet and we attack with it, we must then subsequently move it after attacking.
     attacker->direction = attack.attack_direction_from_source;
 
     switch (attacker->machine.get().machine_type)
@@ -107,7 +107,10 @@ void Game::pre_turn()
     {
         machine->machine_state = MachineState::Ready;
         machine->attack_power_modifier = 0;
-
+    }
+    
+    for (auto &machine : *board)
+    {
         switch (machine->machine.get().skill)
         {
         case MachineSkill::Spray:
@@ -229,7 +232,7 @@ std::string get_direction_string(MachineDirection direction)
     throw std::invalid_argument("Invalid direction");
 }
 
-void Game::print_board(GameMachine* focus_machine, std::optional<std::vector<Move>> moves, std::optional<std::vector<Attack>> attacks)
+void Game::print_board(GameMachine *focus_machine, std::optional<std::vector<Move>> moves, std::optional<std::vector<Attack>> attacks)
 {
     std::cout << "Turn: " << (turn == Player::Player ? "Player" : "Opponent") << "\t";
     std::cout << "Player VP: " << player_victory_points << "\t";

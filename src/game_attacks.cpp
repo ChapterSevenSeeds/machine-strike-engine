@@ -29,7 +29,7 @@ bool Game::knock_machine(GameMachine *machine, MachineDirection direction)
 
 GameMachine *Game::pre_apply_attack(Attack &attack)
 {
-    auto &attacker = board->machine_at(attack.source);
+    auto attacker = board->machine_at(attack.source);
     auto attacker_combat_power = calculate_combat_power(attacker, attack.attack_direction_from_source);
 
     apply_attack(attack, attacker, attacker_combat_power);
@@ -44,7 +44,7 @@ void Game::apply_attack(Attack &attack, GameMachine *attacker, uint32_t attacker
         if (!attacker->is_alive())
             return;
 
-        auto &defender = board->machine_at(coord);
+        auto defender = board->machine_at(coord);
         auto defender_combat_power = calculate_combat_power(defender, attack.attack_direction_from_source);
 
         if (defender->side == attacker->side)
@@ -76,7 +76,7 @@ void Game::apply_attack(Attack &attack, GameMachine *attacker, uint32_t attacker
 
 void Game::perform_dash_attack(Attack &attack)
 {
-    auto &attacker = board->machine_at(attack.source);
+    auto attacker = board->machine_at(attack.source);
     auto attacker_combat_power = calculate_combat_power(attacker, attack.attack_direction_from_source);
 
     // Move the attacker to the destination immediately.
@@ -104,7 +104,7 @@ void Game::perform_pull_attack(Attack &attack)
     // how the pulling should work if a machine has the sweep skill. I am going to assume that all machines are pulled.
     for (const auto &coord : attack.affected_machines)
     {
-        auto &defender = board->machine_at(coord);
+        auto defender = board->machine_at(coord);
         knock_machine(defender, opposite_direction(attack.attack_direction_from_source));
     }
 }
@@ -114,7 +114,7 @@ void Game::perform_ram_attack(Attack &attack)
     pre_apply_attack(attack);
     for (const auto &coord : attack.affected_machines)
     {
-        auto &defender = board->machine_at(coord);
+        auto defender = board->machine_at(coord);
         knock_machine(defender, attack.attack_direction_from_source);
     }
 
@@ -176,7 +176,7 @@ void Game::perform_post_attack_skills(GameMachine *attacker, GameMachine *defend
 
     for (const auto &coord : attack.affected_machines)
     {
-        auto &machine = board->machine_at(coord);
+        auto machine = board->machine_at(coord);
         if (machine->machine.get().skill != MachineSkill::Retaliate)
             continue;
 

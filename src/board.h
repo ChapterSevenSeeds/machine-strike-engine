@@ -23,7 +23,7 @@ public:
     BoardIterator begin();
     BoardIterator end();
     Terrain &terrain_at(Coord coordinates);
-    GameMachine* &machine_at(Coord coordinates);
+    GameMachine* machine_at(Coord coordinates);
     void clear_spot(Coord coord);
 };
 
