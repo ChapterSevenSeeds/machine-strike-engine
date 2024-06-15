@@ -9,21 +9,21 @@
 
 // TODO: Refactor the crap out of this file.
 
-MachineState attack_causes_state(GameMachine &machine)
+MachineState attack_causes_state(GameMachine *machine)
 {
-    if (machine.machine_state == MachineState::Sprinted)
+    if (machine->machine_state == MachineState::Sprinted)
         return MachineState::Overcharged;
-    if (machine.has_moved())
+    if (machine->has_moved())
         return MachineState::MovedAndAttacked;
-    if (machine.has_attacked())
+    if (machine->has_attacked())
         return MachineState::Overcharged;
     return MachineState::Attacked;
 }
 
-void Game::populate_adjacent_attacks(GameMachine &machine, MachineDirection direction, Coord source_coodinates, std::optional<std::pair<std::optional<Attack>, std::optional<Attack>>> &attack, std::vector<Coord> &affected_machines)
+void Game::populate_adjacent_attacks(GameMachine *machine, MachineDirection direction, Coord source_coodinates, std::optional<std::pair<std::optional<Attack>, std::optional<Attack>>> &attack, std::vector<Coord> &affected_machines)
 {
     // If we do not posses the sweep skill, stop.
-    if (machine.machine.get().skill != MachineSkill::Sweep)
+    if (machine->machine.get().skill != MachineSkill::Sweep)
         return;
 
     // Look to the left and right of the destination.
@@ -36,33 +36,33 @@ void Game::populate_adjacent_attacks(GameMachine &machine, MachineDirection dire
         if (sweep_destination.out_of_bounds())
             continue;
 
-        auto destination_machine = board.machine_at(sweep_destination);
-        if (destination_machine.has_value())
+        auto destination_machine = board->machine_at(sweep_destination);
+        if (destination_machine != nullptr)
         {
             // If there is a machine to the left or right (enemy or friendly), then it is attacked as part of the main attack.
             affected_machines.push_back(sweep_destination);
 
             // If the machine to the left or right is an enemy, and we have not already found an enemy to attack, then this is the main attack.
-            if (!attack.has_value() && destination_machine.value().side != machine.side)
+            if (!attack.has_value() && destination_machine->side != machine->side)
             {
                 auto causes_state = attack_causes_state(machine);
-                if (machine.machine_state != MachineState::Overcharged)
+                if (machine->machine_state != MachineState::Overcharged)
                     attack = std::make_pair(Attack(
                                                 direction,
                                                 source_coodinates,
-                                                machine.coordinates,
+                                                machine->coordinates,
                                                 causes_state),
                                             std::nullopt);
 
-                // If we only have one machine and it has moved and if we haven't already moved two machines, we can attack again as if it were a second machine.
-                if (get_turn_machine_count() == 1 && (machine.has_moved() || machine.machine_state == MachineState::Overcharged) && state != GameState::MustEndTurn)
+                // If we only have one machine and it has moved and if we haven't already moved two machines, we can attack again as if it were a second machine->
+                if (get_turn_machine_count() == 1 && (machine->has_moved() || machine->machine_state == MachineState::Overcharged) && state != GameState::MustEndTurn)
                 {
                     if (!attack.has_value())
                         attack = std::make_pair(std::nullopt, std::nullopt);
                     attack.value().second = Attack(
                         direction,
                         source_coodinates,
-                        machine.coordinates,
+                        machine->coordinates,
                         MachineState::Attacked);
                 }
             }
@@ -71,47 +71,47 @@ void Game::populate_adjacent_attacks(GameMachine &machine, MachineDirection dire
 
     // If there is a machine right at the destination, then the only way we could have gotten here
     // is if the machine at the destination is a friendly. Since we have the sweep skill, the friendly must be attacked too 😭.
-    if (attack.has_value() && board.machine_at(source_coodinates).has_value())
+    if (attack.has_value() && board->machine_at(source_coodinates) != nullptr)
     {
         affected_machines.push_back(source_coodinates);
     }
 }
 
-std::optional<std::pair<std::optional<Attack>, std::optional<Attack>>> Game::first_machine_in_attack_range(MachineDirection direction, GameMachine &machine)
+std::optional<std::pair<std::optional<Attack>, std::optional<Attack>>> Game::first_machine_in_attack_range(MachineDirection direction, GameMachine *machine)
 {
     std::vector<Coord> affected_machines;
     std::optional<std::pair<std::optional<Attack>, std::optional<Attack>>> attack;
 
-    for (int i = 0; i < machine.machine.get().range && !attack.has_value(); ++i)
+    for (int i = 0; i < machine->machine.get().range && !attack.has_value(); ++i)
     {
         // Move one space in the direction.
-        auto destination = traverse_direction(machine.coordinates, direction, i + 1);
+        auto destination = traverse_direction(machine->coordinates, direction, i + 1);
 
         // If the destination is out of bounds, stop.
         if (destination.out_of_bounds())
             break;
 
         // Is the destination occupied by an enemy machine?
-        auto destination_machine = board.machine_at(destination);
-        if (destination_machine.has_value() && destination_machine.value().side != machine.side)
+        auto destination_machine = board->machine_at(destination);
+        if (destination_machine != nullptr && destination_machine->side != machine->side)
         {
-            if (machine.machine_state != MachineState::Overcharged)
+            if (machine->machine_state != MachineState::Overcharged)
                 attack = std::make_pair(Attack(
                                             direction,
                                             destination,
-                                            machine.coordinates,
+                                            machine->coordinates,
                                             attack_causes_state(machine)),
                                         std::nullopt);
 
-            // If we only have one machine and it has moved and if we haven't already moved two machines, we can attack again as if it were a second machine.
-            if (get_turn_machine_count() == 1 && (machine.has_moved() || machine.machine_state == MachineState::Overcharged) && state != GameState::MustEndTurn)
+            // If we only have one machine and it has moved and if we haven't already moved two machines, we can attack again as if it were a second machine->
+            if (get_turn_machine_count() == 1 && (machine->has_moved() || machine->machine_state == MachineState::Overcharged) && state != GameState::MustEndTurn)
             {
                 if (!attack.has_value())
                     attack = std::make_pair(std::nullopt, std::nullopt);
                 attack.value().second = Attack(
                     direction,
                     destination,
-                    machine.coordinates,
+                    machine->coordinates,
                     MachineState::Attacked);
             }
 
@@ -132,17 +132,17 @@ std::optional<std::pair<std::optional<Attack>, std::optional<Attack>>> Game::fir
     return attack;
 }
 
-std::vector<Attack> Game::calculate_attacks(GameMachine &machine)
+std::vector<Attack> Game::calculate_attacks(GameMachine *machine)
 {
     std::vector<Attack> attacks;
 
-    if (machine.side != turn) // If it's not our turn, we can't attack
+    if (machine->side != turn) // If it's not our turn, we can't attack
         return attacks;
 
     if (must_move_last_touched_machine) // If we must move the last touched machine, we can't attack
         return attacks;
 
-    if (machine.machine_state == MachineState::Overcharged && (get_turn_machine_count() > 1 || state == GameState::MustEndTurn))
+    if (machine->machine_state == MachineState::Overcharged && (get_turn_machine_count() > 1 || state == GameState::MustEndTurn))
         return attacks;
 
     for (auto direction : {
@@ -152,7 +152,7 @@ std::vector<Attack> Game::calculate_attacks(GameMachine &machine)
              MachineDirection::West,
          })
     {
-        switch (machine.machine.get().machine_type)
+        switch (machine->machine.get().machine_type)
         {
         case MachineType::Melee:
         case MachineType::Ram:
@@ -174,30 +174,30 @@ std::vector<Attack> Game::calculate_attacks(GameMachine &machine)
         {
             std::vector<Coord> affected_machines;
             std::optional<std::pair<std::optional<Attack>, std::optional<Attack>>> main_attack;
-            auto end_of_attack_range = traverse_direction(machine.coordinates, direction, machine.machine.get().range);
+            auto end_of_attack_range = traverse_direction(machine->coordinates, direction, machine->machine.get().range);
             if (end_of_attack_range.out_of_bounds())
                 continue;
 
-            auto destination_machine = board.machine_at(end_of_attack_range);
-            if (destination_machine.has_value() && destination_machine.value().side != machine.side)
+            auto destination_machine = board->machine_at(end_of_attack_range);
+            if (destination_machine != nullptr && destination_machine->side != machine->side)
             {
-                if (machine.machine_state != MachineState::Overcharged)
+                if (machine->machine_state != MachineState::Overcharged)
                     main_attack = std::make_pair(Attack(
                                                      direction,
                                                      end_of_attack_range,
-                                                     machine.coordinates,
+                                                     machine->coordinates,
                                                      attack_causes_state(machine)),
                                                  std::nullopt);
 
-                // If we only have one machine and it has moved and if we haven't already moved two machines, we can attack again as if it were a second machine.
-                if (get_turn_machine_count() == 1 && (machine.has_moved() || machine.machine_state == MachineState::Overcharged) && state != GameState::MustEndTurn)
+                // If we only have one machine and it has moved and if we haven't already moved two machines, we can attack again as if it were a second machine->
+                if (get_turn_machine_count() == 1 && (machine->has_moved() || machine->machine_state == MachineState::Overcharged) && state != GameState::MustEndTurn)
                 {
                     if (!main_attack.has_value())
                         main_attack = std::make_pair(std::nullopt, std::nullopt);
                     main_attack.value().second = Attack(
                         direction,
                         end_of_attack_range,
-                        machine.coordinates,
+                        machine->coordinates,
                         MachineState::Attacked);
                 }
 
@@ -225,12 +225,12 @@ std::vector<Attack> Game::calculate_attacks(GameMachine &machine)
         }
         case MachineType::Dash:
         {
-            auto end_of_attack_range = traverse_direction(machine.coordinates, direction, machine.machine.get().range);
+            auto end_of_attack_range = traverse_direction(machine->coordinates, direction, machine->machine.get().range);
             if (end_of_attack_range.out_of_bounds())
                 continue;
 
             // Must be able to land on an empty space
-            if (board.machine_at(end_of_attack_range).has_value())
+            if (board->machine_at(end_of_attack_range) != nullptr)
                 continue;
 
             // Grab the attack for the first enemy in the path.
@@ -260,9 +260,9 @@ std::vector<Attack> Game::calculate_attacks(GameMachine &machine)
     return attacks;
 }
 
-int32_t Game::get_skill_combat_power_modifier_when_defending(GameMachine &machine)
+int32_t Game::get_skill_combat_power_modifier_when_defending(GameMachine *machine)
 {
-    switch (machine.machine.get().skill)
+    switch (machine->machine.get().skill)
     {
     case MachineSkill::Shield:
         return 1;
@@ -271,52 +271,52 @@ int32_t Game::get_skill_combat_power_modifier_when_defending(GameMachine &machin
     }
 }
 
-int32_t Game::get_skill_combat_power_modifier_when_attacking(GameMachine &machine)
+int32_t Game::get_skill_combat_power_modifier_when_attacking(GameMachine *machine)
 {
     int32_t combat_power = 0;
-    switch (machine.machine.get().skill)
+    switch (machine->machine.get().skill)
     {
     case MachineSkill::Gallop:
-        if (board.terrain_at(machine.coordinates) == Terrain::Grassland)
+        if (board->terrain_at(machine->coordinates) == Terrain::Grassland)
             combat_power = 1;
         break;
     case MachineSkill::Stalk:
-        if (board.terrain_at(machine.coordinates) == Terrain::Forest)
+        if (board->terrain_at(machine->coordinates) == Terrain::Forest)
             combat_power = 1;
         break;
     case MachineSkill::HighGround:
-        if (board.terrain_at(machine.coordinates) == Terrain::Mountain)
+        if (board->terrain_at(machine->coordinates) == Terrain::Mountain)
             combat_power = 1;
         break;
     case MachineSkill::Climb:
-        if (board.terrain_at(machine.coordinates) == Terrain::Hill)
+        if (board->terrain_at(machine->coordinates) == Terrain::Hill)
             combat_power = 1;
         break;
     default:
         break;
     }
 
-    return combat_power + machine.attack_power_modifier;
+    return combat_power + machine->attack_power_modifier;
 }
 
 // If the second argument is std::nullopt, then a machine's armor will be ignored from the calculation (should only be used for printing the board).
-int32_t Game::calculate_combat_power(GameMachine &machine, std::optional<MachineDirection> attack_direction)
+int32_t Game::calculate_combat_power(GameMachine *machine, std::optional<MachineDirection> attack_direction)
 {
     // A defending machine's combat power is only the terrain it is standing on, plus any modifiers.
     // An attacking machine's combat power is the terrain it is standing on, plus any modifiers, plus its attack power.
-    int32_t combat_power = static_cast<int32_t>(board.terrain_at(machine.coordinates));
+    int32_t combat_power = static_cast<int32_t>(board->terrain_at(machine->coordinates));
 
     // If the machine is a pull machine and the terrain is marsh, add 1 combat power.
-    if (machine.machine.get().is_pull() && board.terrain_at(machine.coordinates) == Terrain::Marsh)
+    if (machine->machine.get().is_pull() && board->terrain_at(machine->coordinates) == Terrain::Marsh)
         ++combat_power;
 
     // All swoop machines get +1 combat power.
-    if (machine.machine.get().is_flying())
+    if (machine->machine.get().is_flying())
         ++combat_power;
 
-    if (machine.side == turn)
+    if (machine->side == turn)
     {
-        combat_power += machine.machine.get().attack;
+        combat_power += machine->machine.get().attack;
         combat_power += get_skill_combat_power_modifier_when_attacking(machine);
         return combat_power;
     }
@@ -324,10 +324,10 @@ int32_t Game::calculate_combat_power(GameMachine &machine, std::optional<Machine
     {
         if (attack_direction.has_value())
         {
-            auto side_being_attacked = side_tangent_to_direction(attack_direction.value(), machine.direction);
-            if (static_cast<int32_t>(side_being_attacked & machine.machine.get().armored_sides) != 0)
+            auto side_being_attacked = side_tangent_to_direction(attack_direction.value(), machine->direction);
+            if (static_cast<int32_t>(side_being_attacked & machine->machine.get().armored_sides) != 0)
                 combat_power += 1;
-            else if (static_cast<int32_t>(side_being_attacked & machine.machine.get().weak_sides) != 0)
+            else if (static_cast<int32_t>(side_being_attacked & machine->machine.get().weak_sides) != 0)
                 combat_power -= 1;
         }
 
@@ -336,20 +336,20 @@ int32_t Game::calculate_combat_power(GameMachine &machine, std::optional<Machine
     }
 }
 
-bool Game::is_in_attack_range(GameMachine &attacker, GameMachine &defender)
+bool Game::is_in_attack_range(GameMachine *attacker, GameMachine *defender)
 {
     // Both the attacker and the defender must be on either the same row or the same column.
-    if (attacker.coordinates.row != defender.coordinates.row && attacker.coordinates.column != defender.coordinates.column)
+    if (attacker->coordinates.row != defender->coordinates.row && attacker->coordinates.column != defender->coordinates.column)
         return false;
 
     // Get the direction from the attacker to the defender.
-    auto direction = get_direction(attacker.coordinates, defender.coordinates);
+    auto direction = get_direction(attacker->coordinates, defender->coordinates);
 
     // See if the defender is on the attack path of the attacker.
-    for (int i = 1; i < attacker.machine.get().range; ++i)
+    for (int i = 1; i < attacker->machine.get().range; ++i)
     {
-        auto coord = traverse_direction(attacker.coordinates, direction, i);
-        if (coord == defender.coordinates)
+        auto coord = traverse_direction(attacker->coordinates, direction, i);
+        if (coord == defender->coordinates)
             return true;
     }
 

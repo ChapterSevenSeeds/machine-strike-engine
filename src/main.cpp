@@ -154,7 +154,7 @@ int main()
             else
                 throw std::runtime_error("Invalid first player");
 
-            game = new Game({terrain, machines}, first_player);
+            game = new Game(machines, terrain, first_player);
         }
         else if (tokens[0] == "rotate")
         {
@@ -162,8 +162,8 @@ int main()
             int column = std::stoi(tokens[2]);
             std::string rotation = tokens[3];
 
-            auto &machine = game->board.machine_at({row, column});
-            if (!machine.has_value())
+            auto &machine = game->board->machine_at({row, column});
+            if (machine == nullptr)
             {
                 std::cout << "No machine at that location" << std::endl;
                 continue;
@@ -184,7 +184,7 @@ int main()
                 continue;
             }
 
-            machine.value().direction = direction;
+            machine->direction = direction;
         }
         else if (tokens[0] == "endturn")
         {
@@ -207,13 +207,13 @@ int main()
             int row = std::stoi(tokens[1]);
             int column = std::stoi(tokens[2]);
 
-            auto machine = game->board.machine_at({row, column});
-            if (!machine.has_value())
+            auto machine = game->board->machine_at({row, column});
+            if (machine == nullptr)
             {
                 std::cout << "No machine at that location" << std::endl;
                 continue;
             }
-            auto moves = game->calculate_moves(machine.value());
+            auto moves = game->calculate_moves(machine);
             game->print_board(machine, moves);
         }
         else if (tokens[0] == "print")
@@ -231,14 +231,14 @@ int main()
             int row = std::stoi(tokens[1]);
             int column = std::stoi(tokens[2]);
 
-            auto machine = game->board.machine_at({row, column});
-            if (!machine.has_value())
+            auto machine = game->board->machine_at({row, column});
+            if (machine == nullptr)
             {
                 std::cout << "No machine at that location" << std::endl;
                 continue;
             }
 
-            auto attacks = game->calculate_attacks(machine.value());
+            auto attacks = game->calculate_attacks(machine);
             game->print_board(machine, std::nullopt, attacks);
         }
         else if (tokens[0] == "attack")
@@ -254,8 +254,8 @@ int main()
                 continue;
             }
 
-            auto machine = game->board.machine_at({machine_row, machine_column});
-            if (!machine.has_value())
+            auto machine = game->board->machine_at({machine_row, machine_column});
+            if (machine == nullptr)
             {
                 std::cout << "No machine at that location" << std::endl;
                 continue;
@@ -276,7 +276,7 @@ int main()
                 continue;
             }
 
-            auto attacks = game->calculate_attacks(machine.value());
+            auto attacks = game->calculate_attacks(machine);
 
             auto attack = std::find_if(attacks.begin(), attacks.end(), [&attack_direction, &direction, &overcharge](const Attack &a)
                                        { return a.attack_direction_from_source == direction && ((overcharge && a.causes_state == MachineState::Overcharged) || !overcharge); });
@@ -303,14 +303,14 @@ int main()
             int destination_column = std::stoi(tokens[4]);
             bool overcharge = tokens[5] == "true";
 
-            auto machine = game->board.machine_at({machine_row, machine_column});
-            if (!machine.has_value())
+            auto machine = game->board->machine_at({machine_row, machine_column});
+            if (machine == nullptr)
             {
                 std::cout << "No machine at that location" << std::endl;
                 continue;
             }
 
-            auto moves = game->calculate_moves(machine.value());
+            auto moves = game->calculate_moves(machine);
             auto move = std::find_if(moves.begin(), moves.end(), [&destination_row, &destination_column, &overcharge](const Move &m)
                                      { return m.destination == Coord{destination_row, destination_column} && ((overcharge && m.causes_state == MachineState::Overcharged) || !overcharge); });
 

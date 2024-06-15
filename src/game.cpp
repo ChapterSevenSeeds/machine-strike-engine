@@ -7,34 +7,50 @@
 #include "game.h"
 #include "attack.h"
 #include "utils.h"
-Game::Game(Board board, Player turn) : board(board),
-                                       turn(turn)
+Game::Game(BoardType<std::optional<GameMachine>> machines, BoardType<Terrain> terrain, Player turn) : turn(turn)
 {
-    for (const auto &machine : board)
+    BoardType<GameMachine *> board_machines {nullptr};
+
+    for (int row = 0; row < 8; ++row)
     {
-        if (machine.has_value())
+        for (int column = 0; column < 8; ++column)
         {
-            if (machine.value().side == Player::Player)
-            {
-                player_machine_count++;
-            }
+            auto &machine = machines[{row, column}];
+            if (!machine.has_value())
+                continue;
+
+            auto owned_machine = new GameMachine(machine.value());
+            board_machines[{row, column}] = owned_machine;
+
+            if (owned_machine->side == Player::Player)
+                player_machines.push_back(owned_machine);
             else
-            {
-                opponent_machine_count++;
-            }
+                opponent_machines.push_back(owned_machine);
         }
     }
+
+    board = new Board(terrain, board_machines);
+}
+
+Game::~Game()
+{
+    for (auto machine : player_machines)
+        delete machine;
+    for (auto machine : opponent_machines)
+        delete machine;
+
+    delete board;
 }
 
 int Game::get_turn_machine_count() const
 {
-    return turn == Player::Player ? player_machine_count : opponent_machine_count;
+    return turn == Player::Player ? player_machines.size() : opponent_machines.size();
 }
 
 void Game::make_move(Move &m)
 {
-    auto &machine = board.machine_at(m.source).value();
-    machine.machine_state = m.causes_state;
+    auto machine = board->machine_at(m.source);
+    machine->machine_state = m.causes_state;
     if (m.causes_state != MachineState::Overcharged)
     {
         must_move_last_touched_machine = false;
@@ -44,20 +60,20 @@ void Game::make_move(Move &m)
             state = GameState::MustEndTurn;
     }
 
-    if (machine.machine_state == MachineState::Overcharged)
+    if (machine->machine_state == MachineState::Overcharged)
         modify_machine_health(machine, -2);
 
-    board.move_machine(m.source, m.destination);
+    board->move_machine(m.source, m.destination);
 }
 
 void Game::make_attack(Attack &attack)
 {
-    auto &attacker = board.machine_at(attack.source).value();
-    last_touched_machine = &attacker;
+    auto &attacker = board->machine_at(attack.source);
+    last_touched_machine = attacker;
     must_move_last_touched_machine = true;
-    attacker.direction = attack.attack_direction_from_source;
+    attacker->direction = attack.attack_direction_from_source;
 
-    switch (attacker.machine.get().machine_type)
+    switch (attacker->machine.get().machine_type)
     {
     case MachineType::Dash:
         perform_dash_attack(attack);
@@ -79,71 +95,66 @@ void Game::make_attack(Attack &attack)
         break;
     }
 
-    attacker.machine_state = attack.causes_state;
-    if (attacker.machine_state == MachineState::Overcharged)
+    attacker->machine_state = attack.causes_state;
+    if (attacker->machine_state == MachineState::Overcharged)
         modify_machine_health(attacker, -2);
 }
 
 void Game::pre_turn()
 {
     state = GameState::TouchFirstMachine;
-    for (auto &machine : board)
+    for (auto &machine : *board)
     {
-        auto &machine_ref = machine.value();
-        machine_ref.machine_state = MachineState::Ready;
-        machine_ref.attack_power_modifier = 0;
+        machine->machine_state = MachineState::Ready;
+        machine->attack_power_modifier = 0;
 
-        switch (machine_ref.machine.get().skill)
+        switch (machine->machine.get().skill)
         {
         case MachineSkill::Spray:
         {
-            for (auto &other_machine : board)
+            for (auto &other_machine : *board)
             {
-                auto &other_machine_ref = other_machine.value();
-                if (&machine_ref == &other_machine_ref)
+                if (machine == other_machine)
                     continue;
 
-                if (is_in_attack_range(machine_ref, other_machine_ref))
-                    modify_machine_health(other_machine_ref, -1);
+                if (is_in_attack_range(machine, other_machine))
+                    modify_machine_health(other_machine, -1);
             }
             break;
         }
         case MachineSkill::Whiplash:
         {
-            for (auto &other_machine : board)
+            for (auto &other_machine : *board)
             {
-                auto &other_machine_ref = other_machine.value();
-                if (&machine_ref == &other_machine_ref)
+                if (machine == other_machine)
                     continue;
 
-                if (is_in_attack_range(machine_ref, other_machine_ref))
-                    other_machine_ref.direction = opposite_direction(other_machine_ref.direction);
+                if (is_in_attack_range(machine, other_machine))
+                    other_machine->direction = opposite_direction(other_machine->direction);
             }
             break;
         }
         case MachineSkill::Empower:
         {
-            for (auto &other_machine : board)
+            for (auto &other_machine : *board)
             {
-                auto &other_machine_ref = other_machine.value();
-                if (&machine_ref == &other_machine_ref || other_machine_ref.side != machine_ref.side)
+                if (machine == other_machine || other_machine->side != machine->side)
                     continue;
 
-                if (is_in_attack_range(machine_ref, other_machine_ref))
-                    ++other_machine_ref.attack_power_modifier;
+                if (is_in_attack_range(machine, other_machine))
+                    ++other_machine->attack_power_modifier;
             }
             break;
         }
         case MachineSkill::Blind:
         {
-            for (auto &other_machine : board)
+            for (auto &other_machine : *board)
             {
-                auto &other_machine_ref = other_machine.value();
-                if (&machine_ref == &other_machine_ref || other_machine_ref.side == machine_ref.side)
+                if (machine == other_machine || other_machine->side == machine->side)
                     continue;
 
-                if (is_in_attack_range(machine_ref, other_machine_ref))
-                    --other_machine_ref.attack_power_modifier;
+                if (is_in_attack_range(machine, other_machine))
+                    --other_machine->attack_power_modifier;
             }
             break;
         }
@@ -151,22 +162,20 @@ void Game::pre_turn()
     }
 }
 
-void Game::modify_machine_health(GameMachine &machine, int32_t health_change)
+void Game::modify_machine_health(GameMachine *machine, int32_t health_change)
 {
-    machine.health += health_change;
-    if (!machine.is_alive())
+    machine->health += health_change;
+    if (!machine->is_alive())
     {
-        board.clear_spot(machine.coordinates);
+        board->clear_spot(machine->coordinates);
 
-        if (machine.side == Player::Player)
+        if (machine->side == Player::Player)
         {
-            opponent_victory_points += machine.machine.get().points;
-            player_machine_count--;
+            opponent_victory_points += machine->machine.get().points;
         }
         else
         {
-            player_victory_points += machine.machine.get().points;
-            opponent_machine_count--;
+            player_victory_points += machine->machine.get().points;
         }
     }
 }
@@ -220,7 +229,7 @@ std::string get_direction_string(MachineDirection direction)
     throw std::invalid_argument("Invalid direction");
 }
 
-void Game::print_board(std::optional<GameMachine> focus_machine, std::optional<std::vector<Move>> moves, std::optional<std::vector<Attack>> attacks)
+void Game::print_board(GameMachine* focus_machine, std::optional<std::vector<Move>> moves, std::optional<std::vector<Attack>> attacks)
 {
     std::cout << "Turn: " << (turn == Player::Player ? "Player" : "Opponent") << "\t";
     std::cout << "Player VP: " << player_victory_points << "\t";
@@ -233,7 +242,7 @@ void Game::print_board(std::optional<GameMachine> focus_machine, std::optional<s
         for (int column = 0; column < 8; ++column)
         {
             Coord coord{row, column};
-            auto terrain = board.terrain_at(coord);
+            auto terrain = board->terrain_at(coord);
 
             std::cout << "|";
             printf("%24s", to_string(terrain).c_str());
@@ -245,14 +254,13 @@ void Game::print_board(std::optional<GameMachine> focus_machine, std::optional<s
         for (int column = 0; column < 8; ++column)
         {
             Coord coord{row, column};
-            auto machine = board.machine_at(coord);
+            auto machine = board->machine_at(coord);
 
             std::cout << "|";
-            if (machine.has_value())
+            if (machine != nullptr)
             {
-                auto &machine_ref = machine.value();
-                printf(machine_ref.side == turn ? GRN : RED);
-                printf("%24s", ((focus_machine.has_value() && &machine_ref == &focus_machine.value() ? std::string("->") : "") + machine_ref.machine.get().name + get_direction_string(machine_ref.direction)).c_str());
+                printf(machine->side == turn ? GRN : RED);
+                printf("%24s", ((focus_machine != nullptr && machine == focus_machine ? std::string("->") : "") + machine->machine.get().name + get_direction_string(machine->direction)).c_str());
                 printf(RESET);
             }
             else
@@ -267,12 +275,12 @@ void Game::print_board(std::optional<GameMachine> focus_machine, std::optional<s
         for (int column = 0; column < 8; ++column)
         {
             Coord coord{row, column};
-            auto machine = board.machine_at(coord);
+            auto machine = board->machine_at(coord);
 
             std::cout << "|";
-            if (machine.has_value())
+            if (machine != nullptr)
             {
-                printf("%24s", std::string("Health: " + std::to_string(machine.value().health)).c_str());
+                printf("%24s", std::string("Health: " + std::to_string(machine->health)).c_str());
             }
             else
             {
@@ -286,12 +294,12 @@ void Game::print_board(std::optional<GameMachine> focus_machine, std::optional<s
         for (int column = 0; column < 8; ++column)
         {
             Coord coord{row, column};
-            auto machine = board.machine_at(coord);
+            auto machine = board->machine_at(coord);
 
             std::cout << "|";
-            if (machine.has_value())
+            if (machine != nullptr)
             {
-                printf("%24s", std::string("Combat: " + std::to_string(calculate_combat_power(machine.value(), std::nullopt))).c_str());
+                printf("%24s", std::string("Combat: " + std::to_string(calculate_combat_power(machine, std::nullopt))).c_str());
             }
             else
             {
@@ -315,7 +323,7 @@ void Game::print_board(std::optional<GameMachine> focus_machine, std::optional<s
             auto move = std::find_if(moves->begin(), moves->end(), [&coord](const Move &m)
                                      { return m.destination == coord; });
             auto move_with_overcharge = std::find_if(moves->begin(), moves->end(), [&coord](const Move &m)
-                                                      { return m.destination == coord && m.causes_state == MachineState::Overcharged; });
+                                                     { return m.destination == coord && m.causes_state == MachineState::Overcharged; });
 
             std::cout << "|";
             if (move != moves->end())
@@ -363,7 +371,7 @@ void Game::print_board(std::optional<GameMachine> focus_machine, std::optional<s
             {
                 printf("%24s", "Attack");
             }
-            else if (destination != destinations.end() && focus_machine.value().machine.get().machine_type == MachineType::Dash)
+            else if (destination != destinations.end() && focus_machine->machine.get().machine_type == MachineType::Dash)
             {
                 printf("%24s", "Destination");
             }

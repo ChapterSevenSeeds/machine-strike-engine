@@ -15,15 +15,15 @@ class Board
 {
 public:
     BoardType<Terrain> terrain;
-    BoardType<std::optional<GameMachine>> machines;
+    BoardType<GameMachine*> machines;
 
-    Board(BoardType<Terrain> terrain, BoardType<std::optional<GameMachine>> machines);
+    Board(BoardType<Terrain> terrain, BoardType<GameMachine*> machines);
     void move_machine(Coord source, Coord destination);
     bool is_space_occupied(Coord coord);
     BoardIterator begin();
     BoardIterator end();
     Terrain &terrain_at(Coord coordinates);
-    std::optional<GameMachine> &machine_at(Coord coordinates);
+    GameMachine* &machine_at(Coord coordinates);
     void clear_spot(Coord coord);
 };
 
@@ -35,7 +35,7 @@ class BoardIterator
 public:
     BoardIterator(Board *board, Coord start_coords = {0, 0}) : board(board), coord(start_coords) {}
 
-    std::optional<GameMachine> &operator*()
+    GameMachine* &operator*()
     {
         return board->machines[coord];
     }

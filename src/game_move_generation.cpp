@@ -9,7 +9,7 @@
 #include "coord.h"
 #include "move.h"
 
-inline SpotState Game::is_spot_blocked_or_redundant(Coord coord, GameMachine &machine, BoardType<bool> &visited)
+inline SpotState Game::is_spot_blocked_or_redundant(Coord coord, GameMachine *machine, BoardType<bool> &visited)
 {
     // Are we out of bounds?
     if (coord.out_of_bounds())
@@ -24,13 +24,13 @@ inline SpotState Game::is_spot_blocked_or_redundant(Coord coord, GameMachine &ma
     }
 
     // Is a machine already there?
-    if (board.machine_at(coord).has_value())
+    if (board->machine_at(coord) != nullptr)
     {
         return SpotState::Occupied;
     }
 
     // Is the machine not a flying machine and is the terrain a chasm?
-    if (!machine.machine.get().is_flying() && board.terrain_at(coord) == Terrain::Chasm)
+    if (!machine->machine.get().is_flying() && board->terrain_at(coord) == Terrain::Chasm)
     {
         return SpotState::BlockedOrRedundant;
     }
@@ -38,22 +38,22 @@ inline SpotState Game::is_spot_blocked_or_redundant(Coord coord, GameMachine &ma
     return SpotState::Empty;
 }
 
-std::vector<Move> Game::expand_moves(int32_t distance_travelled, Coord coord, GameMachine &machine, BoardType<bool> &visited)
+std::vector<Move> Game::expand_moves(int32_t distance_travelled, Coord coord, GameMachine *machine, BoardType<bool> &visited)
 {
     // If we have already sprinted, we can't move
-    if (distance_travelled > machine.machine.get().movement + 1)
+    if (distance_travelled > machine->machine.get().movement + 1)
     {
         return {};
     }
 
     // If this isn't our first movement (not move) and if the machine is not a flying machine and if the machine is not a pull type and we are currently in a marsh, we can't move
-    if (distance_travelled > 1 && !machine.machine.get().is_flying() && !machine.machine.get().is_pull() && board.terrain_at(coord) == Terrain::Marsh)
+    if (distance_travelled > 1 && !machine->machine.get().is_flying() && !machine->machine.get().is_pull() && board->terrain_at(coord) == Terrain::Marsh)
     {
         return {};
     }
 
-    bool requires_sprint = distance_travelled > machine.machine.get().movement;
-    if (machine.has_attacked() && requires_sprint) // If we have attacked and the move requires a sprint, we can't make this move
+    bool requires_sprint = distance_travelled > machine->machine.get().movement;
+    if (machine->has_attacked() && requires_sprint) // If we have attacked and the move requires a sprint, we can't make this move
         return {};
 
     std::vector<Move> moves;
@@ -65,13 +65,13 @@ std::vector<Move> Game::expand_moves(int32_t distance_travelled, Coord coord, Ga
         if (spot_state == SpotState::BlockedOrRedundant)
             continue;
 
-        auto causes_state = machine.has_moved() ? MachineState::Overcharged : machine.has_attacked() ? MachineState::MovedAndAttacked
+        auto causes_state = machine->has_moved() ? MachineState::Overcharged : machine->has_attacked() ? MachineState::MovedAndAttacked
                                                                           : requires_sprint          ? MachineState::Sprinted
                                                                                                      : MachineState::Moved;
-        if (machine.machine_state != MachineState::Overcharged)
-            moves.emplace_back(new_coord, distance_travelled, machine.coordinates, causes_state, spot_state == SpotState::Occupied);
-        if (get_turn_machine_count() == 1 && (machine.has_moved() || machine.machine_state == MachineState::Overcharged) && state == GameState::TouchFirstMachine) // If we only have one machine and it has moved and if we haven't already moved two machines, we can move it again as if it were a second machine.
-            moves.emplace_back(new_coord, distance_travelled, machine.coordinates, requires_sprint ? MachineState::Sprinted : MachineState::Moved, spot_state == SpotState::Occupied);
+        if (machine->machine_state != MachineState::Overcharged)
+            moves.emplace_back(new_coord, distance_travelled, machine->coordinates, causes_state, spot_state == SpotState::Occupied);
+        if (get_turn_machine_count() == 1 && (machine->has_moved() || machine->machine_state == MachineState::Overcharged) && state == GameState::TouchSecondMachine) // If we only have one machine and it has moved and if we haven't already moved two machines, we can move it again as if it were a second machine->
+            moves.emplace_back(new_coord, distance_travelled, machine->coordinates, requires_sprint ? MachineState::Sprinted : MachineState::Moved, spot_state == SpotState::Occupied);
 
         visited[new_coord] = true;
     }
@@ -79,24 +79,24 @@ std::vector<Move> Game::expand_moves(int32_t distance_travelled, Coord coord, Ga
     return moves;
 }
 
-std::vector<Move> Game::calculate_moves(GameMachine &machine)
+std::vector<Move> Game::calculate_moves(GameMachine *machine)
 {
-    if (machine.side != turn) // If it's not our turn, we can't move
+    if (machine->side != turn) // If it's not our turn, we can't move
         return {};
 
-    if (must_move_last_touched_machine && &machine != last_touched_machine) // If we must move a machine and it's not the machine we touched last, we can't move
+    if (must_move_last_touched_machine && machine != last_touched_machine) // If we must move a machine and it's not the machine we touched last, we can't move
         return {};
 
     // If we are overcharged and we have more than one machine or we have already moved two machines, we can't move
-    if (machine.machine_state == MachineState::Overcharged && (get_turn_machine_count() > 1 || state == GameState::MustEndTurn))
+    if (machine->machine_state == MachineState::Overcharged && (get_turn_machine_count() > 1 || state == GameState::MustEndTurn))
         return {};
 
     // Is the machine eligible for an overcharge?
-    if (state == GameState::MustEndTurn && !machine.has_moved())
+    if (state == GameState::MustEndTurn && !machine->has_moved())
         return {};
 
     BoardType<bool> visited{false};
-    auto all_moves = expand_moves(1, machine.coordinates, machine, visited);
+    auto all_moves = expand_moves(1, machine->coordinates, machine, visited);
 
     auto expanded_index = 0;
     do
