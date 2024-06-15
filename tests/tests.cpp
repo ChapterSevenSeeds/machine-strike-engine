@@ -33,6 +33,15 @@ std::vector<Move> moves_that_cause_state(Game &game, GameMachine *machine, Machi
   return all_moves;
 }
 
+std::vector<Attack> non_overcharge_attacks(Game &game, GameMachine *machine)
+{
+  auto all_attacks = game.calculate_attacks(machine);
+  auto applicable_attacks_iterator = std::remove_if(all_attacks.begin(), all_attacks.end(), [](const Attack &attack)
+                                                   { return attack.causes_state == MachineState::Overcharged; });
+  all_attacks.erase(applicable_attacks_iterator, all_attacks.end());
+  return all_attacks;
+}
+
 Move get_move_with_destination_coords(Game &game, GameMachine *machine, Coord destination, bool causes_overcharge = false)
 {
   auto all_moves = game.calculate_moves(machine);
@@ -154,4 +163,71 @@ TEST(machine_strke_engine_test, Single_friendly_moving_logic)
   EXPECT_EQ(friendly->machine_state, MachineState::Overcharged);
   EXPECT_EQ(game.state, GameState::MustEndTurn);   // We have moved two machines
   EXPECT_EQ(friendly->health, SNAPMAW.health - 4); // We took 2 points of damage for overcharging again
+}
+
+TEST(machine_strike_engine_test, Dual_friendly_moving_logic)
+{
+  auto game = create_game(all_grassland, Player::Player,
+                          {GameMachine(std::ref(SNAPMAW), MachineDirection::South, {0, 0}, MachineState::Ready, Player::Player),
+                           GameMachine(std::ref(SNAPMAW), MachineDirection::South, {0, 1}, MachineState::Ready, Player::Player)});
+
+  auto friendly1 = game.board->machine_at({0, 0});
+  auto friendly2 = game.board->machine_at({0, 1});
+
+  MAKE_FIRST_MOVE(game, friendly1);
+
+  EXPECT_EQ(game.state, GameState::TouchSecondMachine); // We must now move the second machine
+  EXPECT_EQ(friendly1->machine_state, MachineState::Moved);
+  EXPECT_EQ(friendly2->machine_state, MachineState::Ready);
+  EXPECT_NE(game.calculate_moves(friendly1).size(), 0); // We can overcharge the first machine
+
+  MAKE_FIRST_MOVE(game, friendly1); // Overcharge the first machine
+
+  EXPECT_EQ(game.state, GameState::TouchSecondMachine); // We must now move the second machine
+  EXPECT_EQ(friendly1->machine_state, MachineState::Overcharged);
+  EXPECT_EQ(friendly2->machine_state, MachineState::Ready);
+  EXPECT_EQ(friendly1->health, SNAPMAW.health - 2); // We took 2 points of damage for overcharging
+  EXPECT_EQ(game.calculate_moves(friendly1).size(), 0); // We can no longer move the first machine since we have a second machine
+  EXPECT_NE(game.calculate_moves(friendly2).size(), 0); // We can move the second machine
+
+  MAKE_FIRST_MOVE(game, friendly2);
+
+  EXPECT_EQ(game.state, GameState::MustEndTurn); // We have moved two machines
+  EXPECT_EQ(friendly2->machine_state, MachineState::Moved);
+  EXPECT_EQ(friendly1->machine_state, MachineState::Overcharged);
+  EXPECT_NE(game.calculate_moves(friendly2).size(), 0); // We can overcharge the second machine
+
+  MAKE_FIRST_MOVE(game, friendly2); // Overcharge the second machine
+
+  EXPECT_EQ(game.state, GameState::MustEndTurn); // We have moved two machines
+  EXPECT_EQ(friendly2->machine_state, MachineState::Overcharged);
+  EXPECT_EQ(friendly1->machine_state, MachineState::Overcharged);
+  EXPECT_EQ(friendly2->health, SNAPMAW.health - 2); // We took 2 points of damage for overcharging
+}
+
+TEST(machine_strike_engine_test, Machine_can_no_longer_attack_after_sprinting)
+{
+  auto game = create_game(all_grassland, Player::Player,
+                          {GameMachine(std::ref(SNAPMAW), MachineDirection::South, {0, 0}, MachineState::Ready, Player::Player),
+                          GameMachine(std::ref(SNAPMAW), MachineDirection::South, {0, 1}, MachineState::Ready, Player::Player),
+                          GameMachine(std::ref(SNAPMAW), MachineDirection::South, {4, 0}, MachineState::Ready, Player::Opponent),
+                          GameMachine(std::ref(SNAPMAW), MachineDirection::South, {0, 3}, MachineState::Ready, Player::Opponent)});
+  auto friendly1 = game.board->machine_at({0, 0});
+  auto friendly2 = game.board->machine_at({0, 1});
+
+  auto move = get_move_with_destination_coords(game, friendly1, {3, 0}); // Sprint 3 places
+  game.make_move(move);
+
+  EXPECT_EQ(friendly1->coordinates, Coord(3, 0));
+  EXPECT_EQ(friendly1->machine_state, MachineState::Sprinted);
+  EXPECT_EQ(game.state, GameState::TouchSecondMachine); // We must now move the second machine
+  EXPECT_EQ(non_overcharge_attacks(game, friendly1).size(), 0); // We can no longer attack without overcharging
+
+  move = get_move_with_destination_coords(game, friendly2, {0, 2}); // Move the second machine just one space
+  game.make_move(move);
+
+  EXPECT_EQ(friendly2->coordinates, Coord(0, 2));
+  EXPECT_EQ(friendly2->machine_state, MachineState::Moved);
+  EXPECT_EQ(game.state, GameState::MustEndTurn);
+  EXPECT_NE(non_overcharge_attacks(game, friendly2).size(), 0); // We can attack with the second machine without overcharging
 }
