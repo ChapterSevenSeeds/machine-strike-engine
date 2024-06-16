@@ -24,6 +24,7 @@ public:
     std::vector<GameMachine*> opponent_machines;
 
     Game(BoardType<std::optional<GameMachine>> machines, BoardType<Terrain> terrain, Player turn);
+    Game(const Game &game);
     ~Game();
 
     Winner check_winner();
@@ -34,6 +35,7 @@ public:
     std::vector<Attack> calculate_attacks(GameMachine *machine);
     void make_attack(Attack &attack);
     void make_move(Move &m);
+    void search(uint32_t seconds);
 
 private:
 

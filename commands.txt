@@ -1,3 +1,1 @@
-newgame GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG Burrower,S,O;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;Burrower,N,P player
-move 7 7 5 7 true
-moves 5 7
+newgame FFFGFHFGmGGFGFHGHGFFFHFGHGFGGFGGGGFGGFGHGFHFFFGHGHFGFGGmGFHFGFFF ;;;;;;Snapmaw,S,O;;Ravager,S,O;;;Burrower,S,O;;;;;;;Scrapper,S,O;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;Longleg,N,P;;;Charger,N,P;;;Snapmaw,N,P;;;;Grazer,N,P;;Glinthawk,N,P;; player

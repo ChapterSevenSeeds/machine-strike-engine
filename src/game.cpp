@@ -42,6 +42,31 @@ Game::~Game()
     delete board;
 }
 
+Game::Game(const Game &game) : turn(game.turn), player_victory_points(game.player_victory_points), opponent_victory_points(game.opponent_victory_points), state(game.state), last_touched_machine(game.last_touched_machine), must_move_last_touched_machine(game.must_move_last_touched_machine)
+{
+    BoardType<GameMachine *> board_machines{nullptr};
+
+    for (int row = 0; row < 8; ++row)
+    {
+        for (int column = 0; column < 8; ++column)
+        {
+            auto machine = game.board->machine_at({row, column});
+            if (machine == nullptr)
+                continue;
+
+            auto owned_machine = new GameMachine(machine->machine, machine->direction, machine->coordinates, machine->machine_state, machine->side);
+            board_machines[{row, column}] = owned_machine;
+
+            if (owned_machine->side == Player::Player)
+                player_machines.push_back(owned_machine);
+            else
+                opponent_machines.push_back(owned_machine);
+        }
+    }
+
+    board = new Board(game.board->terrain, board_machines);
+}
+
 int Game::get_turn_machine_count() const
 {
     return turn == Player::Player ? player_machines.size() : opponent_machines.size();

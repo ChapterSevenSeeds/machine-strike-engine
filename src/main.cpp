@@ -322,5 +322,9 @@ int main()
 
             game->make_move(*move);
         }
+        else if (tokens[0] == "search")
+        {
+            game->search(5);
+        }
     }
 }
